@@ -84,11 +84,22 @@ Always return exactly 3 outfit_options. Keep "why" tied to Big 4 placements and 
         { role: "system", content: systemPrompt },
         ...messages,
       ],
-      output: responseSchema,
     });
 
-    // Return structured output as JSON string for useChat
-    return new Response(JSON.stringify(result.object), {
+    // Parse the text response as JSON (the model should return valid JSON)
+    let parsedResponse: z.infer<typeof responseSchema>;
+    try {
+      parsedResponse = responseSchema.parse(JSON.parse(result.text));
+    } catch (parseError) {
+      // If parsing fails, return error
+      return NextResponse.json(
+        { error: "Failed to parse AI response" },
+        { status: 500 }
+      );
+    }
+
+    // Return structured output as JSON string
+    return new Response(JSON.stringify(parsedResponse), {
       headers: { "Content-Type": "text/plain" },
     });
   } catch (error: any) {
