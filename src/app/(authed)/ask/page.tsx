@@ -29,8 +29,9 @@ export default function AskPage() {
   const [boards, setBoards] = useState<Array<{ id: string; name: string }>>([]);
   const [showBoardSelect, setShowBoardSelect] = useState(false);
   const [selectedResponse, setSelectedResponse] = useState<ChatResponse | null>(null);
+  const [draft, setDraft] = useState("");
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+  const { messages, append, isLoading } = useChat({
     api: "/api/nefeli/chat",
     body: userId ? { userId } : undefined,
     onFinish: (message) => {
@@ -254,19 +255,28 @@ export default function AskPage() {
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const text = draft.trim();
+          if (!text || !userId) return;
+          setDraft("");
+          await append({ role: "user", content: text });
+        }}
+        className="space-y-4"
+      >
         <div className="flex gap-2">
           <input
             type="text"
-            value={input ?? ""}
-            onChange={handleInputChange}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
             placeholder="Ask NEFELI for style guidance..."
             className="flex-1 rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none"
             disabled={isLoading}
           />
           <button
             type="submit"
-            disabled={isLoading || !(input ?? "").trim() || !userId}
+            disabled={isLoading || !draft.trim() || !userId}
             className="rounded-xl bg-neutral-50 px-6 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? "Sending..." : "Send"}
