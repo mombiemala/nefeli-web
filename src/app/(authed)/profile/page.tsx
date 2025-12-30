@@ -48,6 +48,16 @@ export default function ProfilePage() {
   const [savingBirth, setSavingBirth] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
 
+  // Chart generation states
+  const [genLoading, setGenLoading] = useState(false);
+  const [genStatus, setGenStatus] = useState<string | null>(null);
+
+  // Delete data states
+  const [wipeBoards, setWipeBoards] = useState(false);
+  const [deleteText, setDeleteText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
+
   useEffect(() => {
     loadProfile();
   }, []);
@@ -200,6 +210,120 @@ export default function ProfilePage() {
     }
     setError(null);
     setSuccess(null);
+  }
+
+  async function generateBig4() {
+    setGenLoading(true);
+    setGenStatus(null);
+    setError(null);
+    setSuccess(null);
+
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const res = await fetch("/api/chart/big4", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      setGenStatus(json.error ?? "Could not generate chart.");
+      setGenLoading(false);
+      return;
+    }
+
+    setGenStatus("Chart regenerated successfully.");
+    setGenLoading(false);
+    // Reload profile data
+    await loadProfile();
+  }
+
+  async function deleteMyData() {
+    if (!userId) return;
+
+    // Require typing DELETE (case-insensitive)
+    if (deleteText.trim().toUpperCase() !== "DELETE") {
+      setDeleteStatus("Please type DELETE to confirm.");
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteStatus(null);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Delete boards and board items if checkbox is checked
+      if (wipeBoards) {
+        // Delete board_items first (foreign key constraint)
+        const { error: itemsError } = await supabase
+          .from("board_items")
+          .delete()
+          .eq("user_id", userId);
+
+        if (itemsError) {
+          console.error(itemsError);
+          setDeleteStatus("Error deleting board items.");
+          setDeleting(false);
+          return;
+        }
+
+        // Delete boards
+        const { error: boardsError } = await supabase
+          .from("boards")
+          .delete()
+          .eq("user_id", userId);
+
+        if (boardsError) {
+          console.error(boardsError);
+          setDeleteStatus("Error deleting boards.");
+          setDeleting(false);
+          return;
+        }
+      }
+
+      // Clear birth details and placements in profiles
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          birth_date: null,
+          birth_time: null,
+          birth_place: null,
+          lat: null,
+          lng: null,
+          tz: null,
+          style_intent: null,
+          sun_sign: null,
+          moon_sign: null,
+          rising_sign: null,
+          mc_sign: null,
+        })
+        .eq("user_id", userId);
+
+      if (profileError) {
+        console.error(profileError);
+        setDeleteStatus("Error clearing profile data.");
+        setDeleting(false);
+        return;
+      }
+
+      setDeleteStatus("Data deleted.");
+      setDeleteText("");
+      setWipeBoards(false);
+      setDeleting(false);
+      // Reload profile to show empty state
+      await loadProfile();
+    } catch (err) {
+      console.error(err);
+      setDeleteStatus("An error occurred while deleting data.");
+      setDeleting(false);
+    }
   }
 
   if (loading) {
@@ -537,72 +661,189 @@ export default function ProfilePage() {
 
       {/* Chart Section */}
       <div className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8">
-        <h2 className="mb-6 text-lg font-semibold text-neutral-50">Chart</h2>
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-neutral-50">Chart</h2>
+          {profile.sun_sign || profile.moon_sign || profile.rising_sign || profile.mc_sign ? (
+            <button
+              type="button"
+              onClick={generateBig4}
+              disabled={genLoading}
+              className="text-sm font-medium text-neutral-300 underline-offset-4 hover:text-neutral-50 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {genLoading ? "Regenerating…" : "Regenerate chart"}
+            </button>
+          ) : null}
+        </div>
 
         {!profile.sun_sign &&
         !profile.moon_sign &&
         !profile.rising_sign &&
         !profile.mc_sign ? (
           <div className="text-center">
-            <h3 className="text-base font-semibold text-neutral-50">Your chart</h3>
-            <p className="mt-2 text-sm text-neutral-400">
-              Once your chart is generated, you'll see your key placements here.
+            <p className="text-sm text-neutral-400">
+              Once we generate your chart, you'll see your key placements here (Sun, Moon, Rising,
+              and Midheaven).
             </p>
-            <button
-              type="button"
-              disabled
-              className="mt-4 rounded-lg border border-neutral-800 bg-transparent px-4 py-2 text-sm font-medium text-neutral-500 transition-colors disabled:cursor-not-allowed"
-            >
-              Coming soon
-            </button>
+            <p className="mt-3 text-xs text-neutral-500">
+              Birth time improves accuracy for Rising + houses.
+            </p>
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={generateBig4}
+                disabled={genLoading}
+                className="rounded-xl bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-100 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {genLoading ? "Generating…" : "Generate chart"}
+              </button>
+              {genStatus && (
+                <p className={`mt-2 text-sm ${genStatus.includes("error") || genStatus.includes("Could not") ? "text-red-300" : "text-green-300"}`}>
+                  {genStatus}
+                </p>
+              )}
+            </div>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {profile.sun_sign && (
+          <>
+            {/* Big 4 Grid */}
+            <div className="grid gap-4 sm:grid-cols-2 mb-6">
               <div className="rounded-lg border border-neutral-800 bg-neutral-950/50 p-4">
                 <h3 className="text-sm font-semibold text-neutral-50">Sun</h3>
-                <p className="mt-1 text-sm text-neutral-300 capitalize">{profile.sun_sign}</p>
-                <p className="mt-2 text-xs leading-relaxed text-neutral-400">
-                  Your core identity and how you express yourself. This influences your natural
-                  style preferences and what feels most authentic to you.
+                <p className="mt-1 text-base font-medium text-neutral-50 capitalize">
+                  {profile.sun_sign || "—"}
                 </p>
               </div>
-            )}
 
-            {profile.moon_sign && (
               <div className="rounded-lg border border-neutral-800 bg-neutral-950/50 p-4">
                 <h3 className="text-sm font-semibold text-neutral-50">Moon</h3>
-                <p className="mt-1 text-sm text-neutral-300 capitalize">{profile.moon_sign}</p>
-                <p className="mt-2 text-xs leading-relaxed text-neutral-400">
-                  Your emotional needs and what brings you comfort. This guides choices around
-                  texture, softness, and pieces that feel emotionally supportive.
+                <p className="mt-1 text-base font-medium text-neutral-50 capitalize">
+                  {profile.moon_sign || "—"}
                 </p>
               </div>
-            )}
 
-            {profile.rising_sign && (
               <div className="rounded-lg border border-neutral-800 bg-neutral-950/50 p-4">
                 <h3 className="text-sm font-semibold text-neutral-50">Rising</h3>
-                <p className="mt-1 text-sm text-neutral-300 capitalize">{profile.rising_sign}</p>
-                <p className="mt-2 text-xs leading-relaxed text-neutral-400">
-                  How others perceive you at first glance. This shapes your everyday presence and
-                  the immediate impression your style creates.
+                <p className="mt-1 text-base font-medium text-neutral-50 capitalize">
+                  {profile.rising_sign || "—"}
                 </p>
               </div>
-            )}
 
-            {profile.mc_sign && (
               <div className="rounded-lg border border-neutral-800 bg-neutral-950/50 p-4">
-                <h3 className="text-sm font-semibold text-neutral-50">MC</h3>
-                <p className="mt-1 text-sm text-neutral-300 capitalize">{profile.mc_sign}</p>
-                <p className="mt-2 text-xs leading-relaxed text-neutral-400">
-                  Your public image and professional presence. This informs how you present yourself
-                  in work and public settings.
+                <h3 className="text-sm font-semibold text-neutral-50">Midheaven</h3>
+                <p className="mt-1 text-base font-medium text-neutral-50 capitalize">
+                  {profile.mc_sign || "—"}
                 </p>
               </div>
+            </div>
+
+            {/* What this means */}
+            <div className="mb-6 space-y-2 text-sm text-neutral-400">
+              <p>
+                <span className="font-medium text-neutral-300">Sun:</span> Core identity + how you recharge.
+              </p>
+              <p>
+                <span className="font-medium text-neutral-300">Moon:</span> Comfort needs + emotional baseline.
+              </p>
+              <p>
+                <span className="font-medium text-neutral-300">Rising:</span> First impression + style vibe.
+              </p>
+              <p>
+                <span className="font-medium text-neutral-300">Midheaven:</span> Public image + career-facing style.
+              </p>
+            </div>
+
+            {/* Regenerate status */}
+            {genStatus && (
+              <div className={`mb-6 rounded-lg border p-3 text-sm ${
+                genStatus.includes("error") || genStatus.includes("Could not")
+                  ? "border-red-800/50 bg-red-950/20 text-red-200"
+                  : "border-green-800/50 bg-green-950/20 text-green-200"
+              }`}>
+                {genStatus}
+              </div>
             )}
+          </>
+        )}
+      </div>
+
+      {/* Accuracy & Privacy Card */}
+      <div className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8">
+        <h2 className="mb-4 text-lg font-semibold text-neutral-50">Accuracy & privacy</h2>
+
+        {(!profile.birth_time || !profile.birth_place) && (
+          <div className="mb-4 rounded-lg border border-yellow-800/50 bg-yellow-950/20 p-4">
+            <p className="text-sm text-yellow-200 mb-3">
+              Birth time + location improve accuracy for Rising + Midheaven.
+            </p>
+            <Link
+              href="/onboarding"
+              className="inline-block rounded-lg bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-100"
+            >
+              Edit birth details
+            </Link>
           </div>
         )}
+
+        <p className="text-sm text-neutral-400">
+          Your birth details stay in your account. You can edit or delete them anytime.
+        </p>
+      </div>
+
+      {/* Danger Zone - Delete My Data */}
+      <div className="mb-6 rounded-2xl border border-red-900/50 bg-red-950/10 p-8">
+        <h2 className="mb-4 text-lg font-semibold text-red-200">Danger zone</h2>
+        <p className="mb-4 text-sm text-neutral-400">
+          Permanently delete your birth details and chart data. This cannot be undone.
+        </p>
+
+        <div className="mb-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={wipeBoards}
+              onChange={(e) => setWipeBoards(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-red-500 focus:ring-2 focus:ring-red-500 focus:ring-offset-0"
+            />
+            <span className="text-sm text-neutral-300">
+              Also delete my boards and saved items
+            </span>
+          </label>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-red-200 mb-2">
+            Type DELETE to confirm.
+          </label>
+          <input
+            type="text"
+            value={deleteText}
+            onChange={(e) => {
+              setDeleteText(e.target.value);
+              setDeleteStatus(null);
+            }}
+            placeholder="DELETE"
+            className="block w-full rounded-lg border border-red-900/50 bg-neutral-950/50 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-red-800 focus:outline-none focus:ring-1 focus:ring-red-800"
+          />
+        </div>
+
+        {deleteStatus && (
+          <div className={`mb-4 text-sm ${
+            deleteStatus === "Data deleted."
+              ? "text-green-300"
+              : "text-red-300"
+          }`}>
+            {deleteStatus}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={deleteMyData}
+          disabled={deleting || deleteText.trim().toUpperCase() !== "DELETE"}
+          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {deleting ? "Deleting…" : "Delete my NEFELI data"}
+        </button>
       </div>
     </div>
   );

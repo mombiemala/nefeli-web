@@ -8,6 +8,7 @@ type Intent = "work" | "date" | "everyday" | "staples";
 export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [step, setStep] = useState(1);
 
   // Step 1: Display name
@@ -17,6 +18,9 @@ export default function OnboardingPage() {
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("");
   const [birthPlace, setBirthPlace] = useState("");
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
+  const [tz, setTz] = useState<string | null>(null);
 
   // Step 3: Style intent
   const [intent, setIntent] = useState<Intent>("everyday");
@@ -48,6 +52,23 @@ export default function OnboardingPage() {
     }
   }
 
+  async function lookupLocation(place: string) {
+    if (!place) return;
+
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(place)}&limit=1`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data?.[0]) {
+      setStatus("Could not find that location. Try: City, State, Country.");
+      return;
+    }
+
+    setLat(Number(data[0].lat));
+    setLng(Number(data[0].lon));
+    setStatus(null);
+  }
+
   async function saveProfile() {
     const {
       data: { user },
@@ -69,6 +90,9 @@ export default function OnboardingPage() {
       birth_time: birthTime || null,
       birth_place: birthPlace.trim() || null,
       style_intent: intent,
+      lat: lat ?? null,
+      lng: lng ?? null,
+      tz: tz ?? null,
     };
 
     const { error: upsertError } = await supabase
