@@ -29,10 +29,14 @@ const responseSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, userId } = await req.json();
+    const { userId, message } = await req.json();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!message) {
+      return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
     // Verify user exists
@@ -82,7 +86,7 @@ Always return exactly 3 outfit_options. Keep "why" tied to Big 4 placements and 
       model: openai("gpt-4o-mini"),
       messages: [
         { role: "system", content: systemPrompt },
-        ...messages,
+        { role: "user", content: message },
       ],
     });
 

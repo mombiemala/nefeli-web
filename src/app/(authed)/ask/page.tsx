@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useChat } from "ai/react";
 import { supabase } from "@/lib/supabase/client";
 import Link from "next/link";
 
@@ -23,25 +22,22 @@ type ChatResponse = {
   };
 };
 
+type Message = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  data?: ChatResponse;
+};
+
 export default function AskPage() {
   const [userId, setUserId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [savingToBoard, setSavingToBoard] = useState<string | null>(null);
   const [boards, setBoards] = useState<Array<{ id: string; name: string }>>([]);
   const [showBoardSelect, setShowBoardSelect] = useState(false);
-  const [selectedResponse, setSelectedResponse] = useState<ChatResponse | null>(null);
-
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    api: "/api/nefeli/chat",
-    body: userId ? { userId } : undefined,
-    onFinish: (message) => {
-      try {
-        const parsed = JSON.parse(message.content);
-        setSelectedResponse(parsed as ChatResponse);
-      } catch (e) {
-        console.error("Failed to parse response:", e);
-      }
-    },
-  });
 
   useEffect(() => {
     loadUserAndBoards();
@@ -72,27 +68,102 @@ export default function AskPage() {
   }
 
 
-  async function saveToBoard(boardId: string) {
-    if (!selectedResponse || !userId) return;
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || !userId || isLoading) return;
 
+    // Clear error
+    setError(null);
+
+    // Add user message
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: text,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/nefeli/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          message: text,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to get response");
+      }
+
+      const responseText = await res.text();
+      let responseData: ChatResponse;
+
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseError) {
+        // Try to parse as { ok: true, content, data } format
+        const altResponse = JSON.parse(responseText);
+        if (altResponse.ok && altResponse.data) {
+          responseData = altResponse.data;
+        } else {
+          throw new Error("Invalid response format");
+        }
+      }
+
+      // Generate summary text for content
+      const summary = `${responseData.headline}. ${responseData.why}`;
+
+      // Add assistant message
+      const assistantMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: summary,
+        data: responseData,
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err: any) {
+      setError(err.message || "Failed to get response");
+      // Add error message
+      const errorMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: `Error: ${err.message || "Failed to get response"}`,
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function saveToBoard(boardId: string) {
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage?.data || !userId) return;
+
+    const responseData = lastMessage.data;
     setSavingToBoard(boardId);
 
     const { error } = await supabase.from("board_items").insert({
       board_id: boardId,
       user_id: userId,
       intent: "custom",
-      title: selectedResponse.headline,
+      title: responseData.headline,
       bullets: [
-        ...selectedResponse.outfit_options.flatMap((opt) => [
+        ...responseData.outfit_options.flatMap((opt) => [
           `${opt.name}: ${opt.items.join(", ")}`,
           `Palette: ${opt.palette.join(", ")}`,
           opt.notes,
         ]),
-        `Accessories: ${selectedResponse.accessories.join(", ")}`,
-        `Beauty: ${selectedResponse.beauty.join(", ")}`,
-        selectedResponse.why,
+        `Accessories: ${responseData.accessories.join(", ")}`,
+        `Beauty: ${responseData.beauty.join(", ")}`,
+        responseData.why,
       ],
-      why: selectedResponse.why,
+      why: responseData.why,
       anchors: null,
     });
 
@@ -107,8 +178,6 @@ export default function AskPage() {
     alert("Saved to board!");
   }
 
-  const lastMessage = messages[messages.length - 1];
-  const hasResponse = lastMessage?.role === "assistant" && selectedResponse;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -133,15 +202,15 @@ export default function AskPage() {
               <p className="text-sm text-neutral-200">{message.content}</p>
             ) : (
               <div className="space-y-4">
-                {selectedResponse ? (
+                {message.data ? (
                   <>
                     <h3 className="text-lg font-semibold text-neutral-50">
-                      {selectedResponse.headline}
+                      {message.data.headline}
                     </h3>
 
                     {/* Outfit Options */}
                     <div className="space-y-4">
-                      {selectedResponse.outfit_options.map((outfit, i) => (
+                      {message.data.outfit_options.map((outfit, i) => (
                         <div
                           key={i}
                           className="rounded-lg border border-neutral-800 bg-neutral-950/50 p-4"
@@ -167,11 +236,11 @@ export default function AskPage() {
                     </div>
 
                     {/* Accessories */}
-                    {selectedResponse.accessories.length > 0 && (
+                    {message.data.accessories.length > 0 && (
                       <div>
                         <h4 className="text-sm font-semibold text-neutral-50 mb-2">Accessories</h4>
                         <ul className="space-y-1">
-                          {selectedResponse.accessories.map((acc, i) => (
+                          {message.data.accessories.map((acc, i) => (
                             <li key={i} className="text-sm text-neutral-300">
                               • {acc}
                             </li>
@@ -181,13 +250,13 @@ export default function AskPage() {
                     )}
 
                     {/* Beauty */}
-                    {selectedResponse.beauty.length > 0 && (
+                    {message.data.beauty.length > 0 && (
                       <div>
                         <h4 className="text-sm font-semibold text-neutral-50 mb-2">
                           Beauty & finishing touches
                         </h4>
                         <ul className="space-y-1">
-                          {selectedResponse.beauty.map((item, i) => (
+                          {message.data.beauty.map((item, i) => (
                             <li key={i} className="text-sm text-neutral-300">
                               • {item}
                             </li>
@@ -198,11 +267,11 @@ export default function AskPage() {
 
                     {/* Why */}
                     <div className="rounded-lg border border-neutral-800 bg-neutral-950/50 p-4">
-                      <p className="text-xs text-neutral-400 italic">{selectedResponse.why}</p>
+                      <p className="text-xs text-neutral-400 italic">{message.data.why}</p>
                     </div>
 
                     {/* Save to Board */}
-                    {boards.length > 0 && (
+                    {boards.length > 0 && message.id === messages[messages.length - 1]?.id && (
                       <div>
                         {showBoardSelect ? (
                           <div className="space-y-2">
@@ -257,7 +326,7 @@ export default function AskPage() {
       {/* Error Display */}
       {error && (
         <div className="mb-4 rounded-xl border border-red-900/50 bg-red-950/20 p-4">
-          <p className="text-sm text-red-200">{error.message || "An error occurred"}</p>
+          <p className="text-sm text-red-200">{error}</p>
         </div>
       )}
 
@@ -267,7 +336,7 @@ export default function AskPage() {
           <input
             type="text"
             value={input}
-            onChange={handleInputChange}
+            onChange={(e) => setInput(e.target.value)}
             placeholder="Ask NEFELI for style guidance..."
             className="flex-1 rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none"
             disabled={isLoading}
