@@ -14,18 +14,49 @@ const responseSchema = z.object({
   outfit_options: z.array(
     z.object({
       name: z.string(),
-      items: z.array(z.string()),
-      palette: z.array(z.string()),
+      items: z.array(z.string()).min(4).max(7),
+      palette: z.array(z.string()).min(2).max(5),
       notes: z.string(),
     })
   ).length(3),
-  accessories: z.array(z.string()),
-  beauty: z.array(z.string()),
-  why: z.string(),
-  safety: z.object({
-    constraints: z.array(z.string()),
-  }),
+  accessories: z.array(z.string()).min(3).max(6),
+  beauty: z.array(z.string()).min(2).max(5),
+  why: z.string().max(200), // 1-2 sentences max
+  intent: z.enum(["work", "date", "everyday", "staples"]),
+  occasion: z.string().nullable(),
 });
+
+type ResponseData = z.infer<typeof responseSchema>;
+
+// Safe fallback response
+const safeFallback: ResponseData = {
+  headline: "Style guidance",
+  outfit_options: [
+    {
+      name: "Classic look",
+      items: ["Neutral top", "Tailored pants", "Comfortable shoes", "Simple jacket"],
+      palette: ["Neutral tones", "Black"],
+      notes: "Versatile and timeless.",
+    },
+    {
+      name: "Relaxed option",
+      items: ["Soft sweater", "Jeans", "Sneakers", "Casual bag"],
+      palette: ["Earth tones", "Navy"],
+      notes: "Comfortable and easy.",
+    },
+    {
+      name: "Polished choice",
+      items: ["Structured blazer", "Fitted top", "Tailored bottoms", "Leather accessories"],
+      palette: ["Neutral palette", "Accent color"],
+      notes: "Professional and refined.",
+    },
+  ],
+  accessories: ["Watch", "Bag", "Scarf"],
+  beauty: ["Natural makeup", "Simple hairstyle"],
+  why: "These options work for most occasions and body types.",
+  intent: "everyday",
+  occasion: null,
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -45,10 +76,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch user profile
+    // Fetch user profile with birth details to check completeness
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("sun_sign, moon_sign, rising_sign, mc_sign, style_intent")
+      .select("sun_sign, moon_sign, rising_sign, mc_sign, style_intent, birth_time, birth_place")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -59,28 +90,66 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check if birth time/location are missing (affects Rising/MC accuracy)
+    const hasCompleteBirthData = !!(profile.birth_time && profile.birth_place);
+
     // Optionally fetch last 10 board_items for context
     const { data: boardItems } = await supabaseAdmin
       .from("board_items")
-      .select("title, intent")
+      .select("title, intent, item_type, item_json")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(10);
 
-    const contextItems = boardItems?.map((item) => `${item.intent}: ${item.title}`).join(", ") || "None yet";
+    const contextItems = boardItems?.map((item) => {
+      const title = item.title || "Untitled";
+      return `${item.intent || "general"}: ${title}`;
+    }).join(", ") || "None yet";
 
     const systemPrompt = `You are NEFELI, a calm, practical style guide. You provide realistic, wearable suggestions based on astrological placements and user goals. Avoid astrology jargon dumps. Keep recommendations practical and specific.
+
+CRITICAL: You MUST respond with ONLY valid JSON matching this exact schema:
+{
+  "headline": "string",
+  "outfit_options": [
+    {
+      "name": "string",
+      "items": ["string", ...], // 4-7 items
+      "palette": ["string", ...], // 2-5 colors
+      "notes": "string"
+    },
+    ... // exactly 3 outfit_options
+  ],
+  "accessories": ["string", ...], // 3-6 items
+  "beauty": ["string", ...], // 2-5 items
+  "why": "string (1-2 sentences, max 200 chars)",
+  "intent": "work" | "date" | "everyday" | "staples",
+  "occasion": "string" | null
+}
+
+Do NOT include any text before or after the JSON. Return ONLY the JSON object.
 
 User's chart:
 - Sun: ${profile.sun_sign || "—"}
 - Moon: ${profile.moon_sign || "—"}
-- Rising: ${profile.rising_sign || "—"}
-- Midheaven: ${profile.mc_sign || "—"}
+- Rising: ${profile.rising_sign || "—"}${!hasCompleteBirthData ? " (estimated, birth time/location incomplete)" : ""}
+- Midheaven: ${profile.mc_sign || "—"}${!hasCompleteBirthData ? " (estimated, birth time/location incomplete)" : ""}
 - Style intent: ${profile.style_intent || "everyday"}
+
+${!hasCompleteBirthData ? "NOTE: Birth time and/or location are missing. Avoid making overconfident claims about Rising sign or Midheaven placements. Focus on Sun and Moon signs which are more reliable." : ""}
 
 Recent saved items: ${contextItems}
 
-Always return exactly 3 outfit_options. Keep "why" tied to Big 4 placements and style intent. Be specific about items, colors, and styling notes.`;
+Requirements:
+- Return exactly 3 outfit_options
+- Each outfit must have 4-7 items
+- Each outfit must have 2-5 colors in palette
+- Accessories: 3-6 items
+- Beauty: 2-5 items
+- "why" must be 1-2 sentences, max 200 characters
+- Set "intent" to match the user's style_intent: "${profile.style_intent || "everyday"}"
+- Keep "why" tied to Big 4 placements and style intent
+- Be specific about items, colors, and styling notes`;
 
     const result = await generateText({
       model: openai("gpt-4o-mini"),
@@ -90,22 +159,32 @@ Always return exactly 3 outfit_options. Keep "why" tied to Big 4 placements and 
       ],
     });
 
-    // Parse the text response as JSON (the model should return valid JSON)
-    let parsedResponse: z.infer<typeof responseSchema>;
+    // Parse and validate the response
+    let parsedResponse: ResponseData;
     try {
-      parsedResponse = responseSchema.parse(JSON.parse(result.text));
+      // Try to extract JSON from the response (handle cases where model adds markdown code blocks)
+      let jsonText = result.text.trim();
+      // Remove markdown code blocks if present
+      if (jsonText.startsWith("```json")) {
+        jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+      } else if (jsonText.startsWith("```")) {
+        jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
+      }
+      
+      const parsed = JSON.parse(jsonText);
+      parsedResponse = responseSchema.parse(parsed);
     } catch (parseError) {
-      // If parsing fails, return error
-      return NextResponse.json(
-        { error: "Failed to parse AI response" },
-        { status: 500 }
-      );
+      // If parsing fails, log error and return safe fallback
+      console.error("Failed to parse AI response:", parseError);
+      console.error("Raw response:", result.text);
+      parsedResponse = safeFallback;
     }
 
-    // Return structured output as JSON string
-    return new Response(JSON.stringify(parsedResponse), {
-      headers: { "Content-Type": "text/plain" },
-    });
+    // Return structured JSON response
+    return NextResponse.json(
+      { ok: true, data: parsedResponse },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error("Chat API error:", error);
     return NextResponse.json(

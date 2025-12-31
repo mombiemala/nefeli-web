@@ -54,15 +54,16 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
     <div className="min-h-screen bg-neutral-950 text-neutral-50">
       <header className="border-b border-neutral-900">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/profile" className="text-sm font-semibold tracking-[0.25em] text-neutral-200">
+          <Link href="/app" className="text-sm font-semibold tracking-[0.25em] text-neutral-200">
             NEFELI
           </Link>
 
           <nav className="flex items-center gap-2">
-            {navLink("/today", "Today")}
+            {navLink("/app", "Today")}
             {navLink("/ask", "Ask")}
             {navLink("/profile", "Profile")}
             {navLink("/boards", "Boards")}
+            {navLink("/capsule/saved", "Saved capsules")}
             <button
               type="button"
               onClick={logout}

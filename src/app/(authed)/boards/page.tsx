@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type Board = {
   id: string;
@@ -12,6 +13,7 @@ type Board = {
 };
 
 export default function BoardsPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [boards, setBoards] = useState<Board[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -50,13 +52,8 @@ export default function BoardsPage() {
     setLoading(false);
   }
 
-  async function createBoard(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (!name.trim()) {
-      setError("Name is required");
-      return;
-    }
+  async function createBoard(e?: React.FormEvent) {
+    e?.preventDefault();
 
     const {
       data: { user },
@@ -67,6 +64,9 @@ export default function BoardsPage() {
       return;
     }
 
+    // If no name provided, use "My Capsule" (for CTA)
+    const boardName = name.trim() || "My Capsule";
+
     setCreating(true);
     setError(null);
 
@@ -74,7 +74,7 @@ export default function BoardsPage() {
       .from("boards")
       .insert({
         user_id: user.id,
-        name: name.trim(),
+        name: boardName,
         description: description.trim() || null,
       })
       .select()
@@ -92,6 +92,15 @@ export default function BoardsPage() {
     setDescription("");
     setShowForm(false);
     setCreating(false);
+
+    // If this was the "Create my capsule" CTA, route to the new board
+    if (boardName === "My Capsule" && !e) {
+      router.push(`/boards/${data.id}`);
+    }
+  }
+
+  async function handleCreateMyCapsule() {
+    await createBoard();
   }
 
   if (loading) {
@@ -99,6 +108,30 @@ export default function BoardsPage() {
       <div className="flex min-h-screen items-center justify-center bg-neutral-950">
         <div className="text-center">
           <p className="text-neutral-400">Loading…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Full-page empty state
+  if (boards.length === 0 && !showForm) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-950">
+        <div className="mx-auto max-w-2xl text-center px-6">
+          <h1 className="text-3xl font-bold tracking-tight text-neutral-50 mb-4">
+            Create your capsule
+          </h1>
+          <p className="text-sm text-neutral-400 mb-8">
+            Start organizing your style guidance and saved looks.
+          </p>
+          <button
+            type="button"
+            onClick={handleCreateMyCapsule}
+            disabled={creating}
+            className="rounded-xl bg-neutral-50 px-6 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {creating ? "Creating..." : "Create my capsule"}
+          </button>
         </div>
       </div>
     );
@@ -201,23 +234,6 @@ export default function BoardsPage() {
               </div>
             </div>
           </form>
-        </div>
-      )}
-
-      {/* Empty state */}
-      {boards.length === 0 && !showForm && (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-12 text-center">
-          <h2 className="text-xl font-semibold text-neutral-50">Create your first board</h2>
-          <p className="mt-2 text-sm text-neutral-400">
-            Create your first board to collect looks and guidance.
-          </p>
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="mt-6 inline-block rounded-xl bg-neutral-50 px-6 py-2.5 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-100"
-          >
-            Create board
-          </button>
         </div>
       )}
 

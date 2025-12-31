@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import * as Astronomy from "astronomy-engine";
 import { DateTime } from "luxon";
 import tzlookup from "tz-lookup";
@@ -43,7 +43,7 @@ function calcAscendant(lstDeg: number, latDeg: number, epsDeg: number) {
   return normalizeDeg(λasc);
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { user_id } = body ?? {};
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Pull birth info from DB (single source of truth)
+    // Fetch lat and lng from profiles
     const { data: profile, error: profReadErr } = await supabase
       .from("profiles")
       .select("birth_date, birth_time, birth_place, lat, lng, tz")
@@ -79,29 +79,70 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Birth date is required." }, { status: 400 });
     }
 
-    // For Big 4 we need time + place for Rising/MC.
-    if (!profile.birth_time || (!profile.birth_place && (profile.lat == null || profile.lng == null))) {
-      return NextResponse.json(
-        { error: "Birth time and location are required to calculate Rising + Midheaven." },
-        { status: 400 }
-      );
-    }
-
-    // Require lat/lng already stored on the profile (MVP: no external geocoding in API)
+    // Require lat and lng from profile
     const lat = profile.lat as number | null;
     const lng = profile.lng as number | null;
 
     if (lat == null || lng == null) {
       return NextResponse.json(
-        { error: "Missing coordinates. Please update your birth location in your profile so we can calculate Rising + Midheaven." },
+        { error: "Birth location is required to calculate Rising and houses." },
         { status: 400 }
       );
     }
 
-    const tz = profile.tz || tzlookup(lat, lng);
+    // Resolve timezone with fallback logic
+    let resolvedTz: string;
+    
+    if (profile.tz) {
+      // Use existing timezone from profile
+      resolvedTz = profile.tz;
+    } else if (lat != null && lng != null) {
+      // Compute timezone from coordinates
+      try {
+        resolvedTz = tzlookup(lat, lng);
+        
+        // Update profiles.tz with this value (one-time save)
+        const { error: tzUpdateErr } = await supabase
+          .from("profiles")
+          .update({ tz: resolvedTz })
+          .eq("user_id", user_id);
+        
+        if (tzUpdateErr) {
+          console.error("Failed to update timezone in profile:", tzUpdateErr);
+          // Continue anyway - we have the timezone value
+        }
+      } catch (tzError) {
+        return NextResponse.json(
+          { error: "Birth location is required to determine timezone." },
+          { status: 400 }
+        );
+      }
+    } else {
+      return NextResponse.json(
+        { error: "Birth location is required to determine timezone." },
+        { status: 400 }
+      );
+    }
+
+    // Store inputs snapshot in natal_charts.inputs
+    const inputs = {
+      birth_date: profile.birth_date,
+      birth_time: profile.birth_time || null,
+      birth_place: profile.birth_place || null,
+      lat,
+      lng,
+      tz: resolvedTz,
+    };
 
     // Convert local birth datetime -> UTC
-    const local = DateTime.fromISO(`${profile.birth_date}T${profile.birth_time}`, { zone: tz });
+    if (!profile.birth_time) {
+      return NextResponse.json(
+        { error: "Birth time is required to calculate Rising and houses." },
+        { status: 400 }
+      );
+    }
+
+    const local = DateTime.fromISO(`${profile.birth_date}T${profile.birth_time}`, { zone: resolvedTz });
     if (!local.isValid) {
       return NextResponse.json({ error: "Invalid birth date/time." }, { status: 400 });
     }
@@ -139,21 +180,11 @@ export async function POST(req: Request) {
       mc: { sign: mc.sign, deg: mc.deg },
     };
 
-    // Store inputs snapshot
-    const inputs = {
-      birth_date: profile.birth_date,
-      birth_time: profile.birth_time || null,
-      birth_place: profile.birth_place || null,
-      lat,
-      lng,
-      tz,
-    };
-
     // Update profiles with calculated signs and timezone
-    const { error: profWriteErr } = await supabase
+    const { error: profileUpdateErr } = await supabase
       .from("profiles")
       .update({
-        tz,
+        tz: resolvedTz,
         sun_sign: sun.sign,
         moon_sign: moon.sign,
         rising_sign: asc.sign,
@@ -161,8 +192,8 @@ export async function POST(req: Request) {
       })
       .eq("user_id", user_id);
 
-    if (profWriteErr) {
-      return NextResponse.json({ error: profWriteErr.message }, { status: 500 });
+    if (profileUpdateErr) {
+      return NextResponse.json({ error: profileUpdateErr.message }, { status: 500 });
     }
 
     // Insert or update natal_charts with chart_json and inputs snapshot only
@@ -192,8 +223,11 @@ export async function POST(req: Request) {
       },
     });
   } catch (e: any) {
-    console.error("big4 generate error:", e);
-    return NextResponse.json({ error: e?.message ?? "Internal error" }, { status: 500 });
+    console.error("chart generate error:", e);
+    return NextResponse.json(
+      { error: e?.message ?? "Internal error" },
+      { status: 500 }
+    );
   }
 }
 

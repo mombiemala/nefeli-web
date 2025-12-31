@@ -2,8 +2,18 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import LocationAutocomplete from "@/components/LocationAutocomplete";
 
 type Intent = "work" | "date" | "everyday" | "staples";
+
+type LocationResult = {
+  label: string;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  lat: number;
+  lng: number;
+};
 
 export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
@@ -18,12 +28,37 @@ export default function OnboardingPage() {
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("");
   const [birthPlace, setBirthPlace] = useState("");
-  const [lat, setLat] = useState<number | null>(null);
-  const [lng, setLng] = useState<number | null>(null);
+  const [selectedLat, setSelectedLat] = useState<number | null>(null);
+  const [selectedLng, setSelectedLng] = useState<number | null>(null);
   const [tz, setTz] = useState<string | null>(null);
 
   // Step 3: Style intent
   const [intent, setIntent] = useState<Intent>("everyday");
+
+  async function handleLocationSelect(item: { label: string; lat: number; lng: number }) {
+    setBirthPlace(item.label);
+    setSelectedLat(item.lat);
+    setSelectedLng(item.lng);
+
+    // Fetch timezone from coordinates
+    try {
+      const res = await fetch("/api/geo/timezone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat: item.lat, lng: item.lng }),
+      });
+
+      const data = await res.json();
+      if (data.tz) {
+        setTz(data.tz);
+      } else {
+        setTz(null);
+      }
+    } catch (error) {
+      console.error("Timezone lookup error:", error);
+      setTz(null);
+    }
+  }
 
   function nextStep() {
     setError(null);
@@ -39,6 +74,17 @@ export default function OnboardingPage() {
         setError("Birth date is required.");
         return;
       }
+      // If birth_time is present AND (lat or lng is null)
+      if (birthTime && (selectedLat === null || selectedLng === null)) {
+        setError("Please select a location from the list so we can calculate your chart accurately.");
+        return;
+      }
+
+      // Do NOT allow free-text submission if dropdown wasn't selected
+      if (birthPlace.trim() && (selectedLat === null || selectedLng === null)) {
+        setError("Please select a location from the list so we can calculate your chart accurately.");
+        return;
+      }
       setStep(3);
     } else if (step === 3) {
       setStep(4);
@@ -50,23 +96,6 @@ export default function OnboardingPage() {
       setStep(step - 1);
       setError(null);
     }
-  }
-
-  async function lookupLocation(place: string) {
-    if (!place) return;
-
-    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(place)}&limit=1`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (!data?.[0]) {
-      setStatus("Could not find that location. Try: City, State, Country.");
-      return;
-    }
-
-    setLat(Number(data[0].lat));
-    setLng(Number(data[0].lon));
-    setStatus(null);
   }
 
   async function saveProfile() {
@@ -81,6 +110,29 @@ export default function OnboardingPage() {
 
     setSaving(true);
     setError(null);
+    setStatus(null);
+
+    // Validation: require birth_date
+    if (!birthDate) {
+      setError("Birth date is required.");
+      setSaving(false);
+      return;
+    }
+
+    // Validation: if birth_time is present AND (lat or lng is null)
+    if (birthTime && (selectedLat === null || selectedLng === null)) {
+      setError("Please select a location from the list so we can calculate your chart accurately.");
+      setSaving(false);
+      return;
+    }
+
+    // Do NOT allow free-text submission if dropdown wasn't selected
+    // If birthPlace has text but no selection, prevent save
+    if (birthPlace.trim() && (selectedLat === null || selectedLng === null)) {
+      setError("Please select a location from the list so we can calculate your chart accurately.");
+      setSaving(false);
+      return;
+    }
 
     const payload = {
       user_id: user.id,
@@ -90,9 +142,9 @@ export default function OnboardingPage() {
       birth_time: birthTime || null,
       birth_place: birthPlace.trim() || null,
       style_intent: intent,
-      lat: lat ?? null,
-      lng: lng ?? null,
-      tz: tz ?? null,
+      lat: selectedLat,
+      lng: selectedLng,
+      tz: tz,
     };
 
     const { error: upsertError } = await supabase
@@ -102,6 +154,7 @@ export default function OnboardingPage() {
     if (upsertError) {
       setError(upsertError.message);
       setSaving(false);
+      setStatus(null);
       return;
     }
 
@@ -224,20 +277,26 @@ export default function OnboardingPage() {
             </div>
 
             <div>
-              <label htmlFor="birthPlace" className="block text-sm font-medium text-neutral-200">
-                Birth location <span className="text-neutral-500">(optional)</span>
-              </label>
-              <input
-                id="birthPlace"
-                type="text"
-                className="mt-2 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
-                placeholder="City, State / Country"
+              <LocationAutocomplete
+                label="Birth location"
                 value={birthPlace}
-                onChange={(e) => setBirthPlace(e.target.value)}
+                onChangeValue={(v, origin) => {
+                  setBirthPlace(v);
+                  if (origin === "typing") {
+                    setSelectedLat(null);
+                    setSelectedLng(null);
+                    setTz(null);
+                  }
+                }}
+                onSelect={handleLocationSelect}
+                placeholder="City, State / Country"
+                helpText="Choose a location from the list so we can calculate Rising and houses accurately."
               />
-              <p className="mt-2 text-xs text-neutral-500">
-                Used for precise chart calculations based on location.
-              </p>
+              {tz && (
+                <p className="mt-2 text-xs text-neutral-400">
+                  Timezone: {tz}
+                </p>
+              )}
             </div>
           </div>
 
@@ -368,6 +427,12 @@ export default function OnboardingPage() {
               provide your personalized styling guidance.
             </p>
           </div>
+
+          {status && (
+            <div className="mt-6 rounded-lg border border-neutral-800 bg-neutral-950/50 p-3 text-sm text-neutral-300">
+              {status}
+            </div>
+          )}
 
           {error && (
             <div className="mt-6 rounded-lg border border-red-800/50 bg-red-950/20 p-3 text-sm text-red-200">
