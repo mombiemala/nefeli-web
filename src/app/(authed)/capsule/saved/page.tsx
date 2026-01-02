@@ -17,7 +17,9 @@ type Capsule = {
 
 type Board = {
   id: string;
-  title: string;
+  name: string;
+  description: string | null;
+  created_at: string;
 };
 
 export default function SavedCapsulesPage() {
@@ -53,8 +55,8 @@ export default function SavedCapsulesPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
       supabase
-        .from("vision_boards")
-        .select("id, title")
+        .from("boards")
+        .select("id,name,description,created_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
     ]);
@@ -160,7 +162,7 @@ export default function SavedCapsulesPage() {
                     </span>
                     {board && (
                       <span className="inline-block rounded px-2 py-0.5 text-xs font-medium text-neutral-300 bg-neutral-800/50">
-                        {board.title}
+                        {board.name}
                       </span>
                     )}
                   </div>
