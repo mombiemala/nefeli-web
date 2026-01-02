@@ -16,7 +16,7 @@ import {
 type Board = {
   id: string;
   name: string;
-  description: string | null;
+  description?: string | null;
 };
 
 type BoardItem = {
@@ -212,13 +212,13 @@ export default function BoardDetailPage() {
     setUndoItem(undoData);
 
     try {
-      const { error: deleteError } = await supabase
-        .from("board_items")
-        .delete()
-        .eq("id", id);
+    const { error: deleteError } = await supabase
+      .from("board_items")
+      .delete()
+      .eq("id", id);
 
-      if (deleteError) {
-        console.error(deleteError);
+    if (deleteError) {
+      console.error(deleteError);
         // Restore item on error
         setItems((prev) => {
           const newItems = [...prev];
@@ -376,8 +376,8 @@ export default function BoardDetailPage() {
           return newItems;
         });
         setError("Failed to move item");
-        return;
-      }
+      return;
+    }
 
       // Success - close modal
       setShowMoveModal(false);
@@ -568,7 +568,7 @@ export default function BoardDetailPage() {
             Save guidance from Today into this board.
           </p>
           <Link
-            href="/today"
+            href="/app"
             className="mt-6 inline-block rounded-xl bg-neutral-50 px-6 py-2.5 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-100"
           >
             Go to Today
@@ -601,7 +601,7 @@ export default function BoardDetailPage() {
         }
 
         return (
-          <div className="space-y-6">
+        <div className="space-y-6">
             {filteredItems.map((item) => (
             <div
               key={item.id}
@@ -617,14 +617,14 @@ export default function BoardDetailPage() {
                 >
                   Move
                 </button>
-                <button
-                  type="button"
-                  onClick={() => deleteItem(item.id)}
+              <button
+                type="button"
+                onClick={() => deleteItem(item.id)}
                   disabled={deletingId === item.id || movingId === item.id}
                   className="rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-xs font-medium text-neutral-200 transition-colors hover:bg-neutral-900 hover:border-neutral-600 hover:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {deletingId === item.id ? "Removing..." : "Remove"}
-                </button>
+              >
+                {deletingId === item.id ? "Removing..." : "Remove"}
+              </button>
               </div>
 
               {/* Intent pill */}
@@ -746,20 +746,20 @@ export default function BoardDetailPage() {
                 return (
                   <>
                     {bullets.length > 0 ? (
-                      <ul className="space-y-2 mb-4">
+              <ul className="space-y-2 mb-4">
                         {bullets.map((bullet, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm text-neutral-300">
-                            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-50" />
+                  <li key={i} className="flex items-start gap-2 text-sm text-neutral-300">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-50" />
                             <span>{bullet || "—"}</span>
-                          </li>
-                        ))}
-                      </ul>
+                  </li>
+                ))}
+              </ul>
                     ) : (
                       <p className="text-sm text-neutral-400 mb-4 italic">No content available</p>
                     )}
                     {why && (
                       <p className="text-xs text-neutral-500 italic mb-4">{why}</p>
-                    )}
+              )}
                   </>
                 );
               })()}

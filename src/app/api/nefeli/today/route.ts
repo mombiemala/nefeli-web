@@ -3,7 +3,6 @@ import { generateText } from "ai";
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { DateTime } from "luxon";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,6 +18,28 @@ const guidanceSchema = z.object({
 });
 
 type GuidanceData = z.infer<typeof guidanceSchema>;
+
+function getDayKey(tz: string): string {
+  // Use en-CA because it formats as YYYY-MM-DD in most JS engines
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz || "UTC",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const y = parts.find(p => p.type === "year")?.value;
+  const m = parts.find(p => p.type === "month")?.value;
+  const d = parts.find(p => p.type === "day")?.value;
+
+  if (!y || !m || !d) {
+    // Safe fallback (UTC) if formatToParts behaves unexpectedly
+    const iso = new Date().toISOString().slice(0, 10);
+    return iso;
+  }
+
+  return `${y}-${m}-${d}`;
+}
 
 export async function POST(req: Request) {
   try {
@@ -87,7 +108,7 @@ export async function POST(req: Request) {
 
     // day_key in user timezone
     const userTz = profile.tz || "UTC";
-    const dayKey = DateTime.now().setZone(userTz).toFormat("yyyy-MM-dd");
+    const dayKey = getDayKey(userTz);
 
     // --- Cache lookup (must match your upsert conflict key) ---
     if (!force) {
@@ -212,10 +233,10 @@ Return ONLY JSON. No markdown.`;
     });
 
     // --- Parse ---
-    let jsonText = result.text.trim();
+      let jsonText = result.text.trim();
     if (jsonText.startsWith("```json")) jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
     if (jsonText.startsWith("```")) jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
-
+      
     const parsedResponse = guidanceSchema.parse(JSON.parse(jsonText));
 
     // --- Prepare write ---
@@ -255,7 +276,7 @@ Return ONLY JSON. No markdown.`;
     };
 
     const { error: writeErr } = await supabaseAdmin
-      .from("ai_guidance")
+        .from("ai_guidance")
       .upsert(writePayload, { onConflict: "user_id,day_key,intent,source" });
 
     if (writeErr) {

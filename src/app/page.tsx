@@ -11,7 +11,7 @@ export default function Home() {
     (async () => {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
-        window.location.href = "/today";
+        window.location.href = "/app";
         return;
       }
       setChecking(false);

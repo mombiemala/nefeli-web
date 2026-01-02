@@ -712,7 +712,7 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight text-neutral-50">Profile</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-neutral-50">Profile</h1>
           <Link
             href="/capsule"
             className="rounded-lg bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
@@ -1235,7 +1235,7 @@ export default function ProfilePage() {
               {/* Rising */}
               <div className="rounded-lg border border-neutral-800 bg-neutral-950/50 p-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-neutral-50">Rising</h3>
+                <h3 className="text-sm font-semibold text-neutral-50">Rising</h3>
                   {!profile.birth_time && (
                     <span className="text-[10px] font-medium text-neutral-500 bg-neutral-900/50 rounded px-1.5 py-0.5">
                       Needs birth time
@@ -1280,7 +1280,7 @@ export default function ProfilePage() {
               {/* Midheaven */}
               <div className="rounded-lg border border-neutral-800 bg-neutral-950/50 p-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-neutral-50">Midheaven</h3>
+                <h3 className="text-sm font-semibold text-neutral-50">Midheaven</h3>
                   {!profile.birth_time && (
                     <span className="text-[10px] font-medium text-neutral-500 bg-neutral-900/50 rounded px-1.5 py-0.5">
                       Needs birth time

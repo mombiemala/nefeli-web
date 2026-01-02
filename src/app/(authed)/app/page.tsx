@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
 import Link from "next/link";
 import SaveToBoardModal from "@/components/SaveToBoardModal";
-import { DateTime } from "luxon";
 
 type Guidance = {
   id: string;
@@ -111,11 +110,21 @@ export default function AppPage() {
       setGuidanceError(error?.message || "Unable to load guidance");
     } finally {
       setLoading(false);
-    }
+  }
   }
 
   function getDayKey(tz: string): string {
-    return DateTime.now().setZone(tz).toFormat("yyyy-MM-dd");
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+
+    const y = parts.find((p) => p.type === "year")?.value ?? "1970";
+    const m = parts.find((p) => p.type === "month")?.value ?? "01";
+    const d = parts.find((p) => p.type === "day")?.value ?? "01";
+    return `${y}-${m}-${d}`;
   }
 
   async function loadHistory() {
@@ -165,9 +174,9 @@ export default function AppPage() {
     const occasion = options?.occasion ?? null;
     const force = options?.force ?? false;
 
-    const res = await fetch("/api/nefeli/today", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      const res = await fetch("/api/nefeli/today", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         userId: user.id,
         intent,
@@ -175,6 +184,9 @@ export default function AppPage() {
         force,
       }),
     });
+
+    const status = res.status;
+    const statusText = res.statusText;
 
     // Read response as text first
     let rawText = "";
@@ -197,18 +209,21 @@ export default function AppPage() {
     console.log("[/api/nefeli/today] rawText:", rawText);
     console.log("[/api/nefeli/today] parsed payload:", payload);
 
-    if (!res.ok) {
-      // Build user-visible error message
+      if (!res.ok) {
+      console.error("today API failed:", { status, statusText, rawText, payload });
+      // Build user-visible error message with priority:
+      // payload.supabase.message → payload.message → payload.error → first 300 chars of rawText → ${status} ${statusText}
       let errorMessage: string;
-      if (payload?.error) {
+      if (payload?.supabase?.message) {
+        errorMessage = typeof payload.supabase.message === "string" ? payload.supabase.message : String(payload.supabase.message);
+      } else if (payload?.message) {
+        errorMessage = typeof payload.message === "string" ? payload.message : String(payload.message);
+      } else if (payload?.error) {
         errorMessage = typeof payload.error === "string" ? payload.error : String(payload.error);
-        if (payload?.supabase?.message) {
-          errorMessage += `: ${payload.supabase.message}`;
-        }
-      } else if (payload?.supabase?.message) {
-        errorMessage = payload.supabase.message;
+      } else if (rawText && rawText.length > 0) {
+        errorMessage = rawText.substring(0, 300);
       } else {
-        errorMessage = `${res.status} ${res.statusText || "Error"}`;
+        errorMessage = `${status} ${statusText || "Error"}`;
       }
       
       throw new Error(errorMessage);
@@ -242,8 +257,9 @@ export default function AppPage() {
       throw new Error("API returned ok but missing data");
     }
 
-    throw new Error("Unexpected API response format");
-  }
+    const errorText = rawText && rawText.length > 0 ? rawText.substring(0, 300) : "empty body";
+    throw new Error(`Unexpected API response format: ${errorText}`);
+      }
 
   async function handleRegenerate() {
     if (!userId) return;
@@ -302,8 +318,13 @@ export default function AppPage() {
   }
 
   function formatTime(createdAt: string, tz: string): string {
-    const dt = DateTime.fromISO(createdAt).setZone(tz);
-    return dt.toLocaleString(DateTime.TIME_SIMPLE);
+    const date = new Date(createdAt);
+    if (Number.isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
   }
 
   const occasions = [
@@ -443,11 +464,11 @@ export default function AppPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-neutral-50">Today</h1>
-            <p className="mt-2 text-sm text-neutral-400">
-              Your personalized style guidance for today.
-            </p>
-          </div>
+        <h1 className="text-3xl font-bold tracking-tight text-neutral-50">Today</h1>
+        <p className="mt-2 text-sm text-neutral-400">
+          Your personalized style guidance for today.
+        </p>
+      </div>
           <div className="flex items-center gap-3">
             <Link
               href="/capsule/saved"

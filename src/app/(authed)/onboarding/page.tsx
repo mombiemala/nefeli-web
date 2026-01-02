@@ -295,7 +295,7 @@ export default function OnboardingPage() {
               {tz && (
                 <p className="mt-2 text-xs text-neutral-400">
                   Timezone: {tz}
-                </p>
+              </p>
               )}
             </div>
           </div>

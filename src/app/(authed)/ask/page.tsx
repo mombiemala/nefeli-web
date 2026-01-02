@@ -192,7 +192,7 @@ export default function AskPage() {
       item_type: "outfit" as const,
       item_json: {
         title,
-        why: responseData.why,
+      why: responseData.why,
         items,
         occasion: responseData.occasion || null,
         created_from: "ask" as const,
