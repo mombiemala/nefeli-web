@@ -439,55 +439,67 @@ export default function AppPage() {
   }
 
   async function handleAddExample(file: File) {
-    if (!userId || !guidance?.id || uploadingExample) return;
+    if (!guidance?.id || uploadingExample) return;
 
     setUploadingExample(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) throw new Error("No user");
 
-      // Generate storage path: ${userId}/${guidance.id}/${uuid}.jpg
-      const ext = file.name.split(".").pop() || "jpg";
-      const imageId = crypto.randomUUID();
-      const storagePath = `${userId}/${guidance.id}/${imageId}.${ext}`;
+      // Generate storage path: ${user.id}/${guidance.id}/${uuid}-${filename}
+      const storagePath = `${user.id}/${guidance.id}/${crypto.randomUUID()}-${file.name}`;
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from("nefeli-images")
-        .upload(storagePath, file);
+        .upload(storagePath, file, { upsert: false });
 
       if (uploadError) {
         throw new Error(uploadError.message);
       }
 
       // Insert into public.images
-      const { data: imageRow, error: imageError } = await supabase
+      const { data: imageRow, error: insertImageError } = await supabase
         .from("images")
         .insert({
-          created_by: user.id,
-          storage_path: storagePath,
-          bucket: "nefeli-images",
+          created_by: user.id, // ✅ REQUIRED for RLS policy
+          source_type: "user_upload",
           visibility: "private",
-          status: "approved",
+          status: "pending", // if you use moderation
+          bucket: "nefeli-images", // ✅ keep consistent
+          storage_path: storagePath,
+          alt_text: null,
+          keywords: [],
+          tags: [],
         })
-        .select("id")
+        .select()
         .single();
 
-      if (imageError) {
-        throw new Error(imageError.message);
+      if (insertImageError) {
+        throw new Error(insertImageError.message);
+      }
+
+      // Verify guidance belongs to user before linking
+      const { data: guidanceCheck, error: guidanceCheckError } = await supabase
+        .from("ai_guidance")
+        .select("id")
+        .eq("id", guidance.id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (guidanceCheckError || !guidanceCheck) {
+        throw new Error("Guidance not found or does not belong to user");
       }
 
       // Insert into public.image_links
-      const { error: linkError } = await supabase
+      const { error: linkErr } = await supabase
         .from("image_links")
         .insert({
           image_id: imageRow.id,
-          guidance_id: guidance.id,
+          guidance_id: guidance.id, // must be a row in ai_guidance for this user
         });
 
-      if (linkError) {
-        throw new Error(linkError.message);
-      }
+      if (linkErr) throw new Error(linkErr.message);
 
       // Reload examples
       await loadExamples();
