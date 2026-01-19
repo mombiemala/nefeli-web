@@ -55,7 +55,6 @@ export async function POST(req: Request) {
     }
 
     const userId = body?.userId;
-    const force = Boolean(body?.force);
 
     if (!userId) {
       return NextResponse.json(
@@ -63,6 +62,18 @@ export async function POST(req: Request) {
         { status: 401 }
       );
     }
+
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    if (!uuidRegex.test(userId)) {
+      return NextResponse.json(
+        { error: "Bad request", message: "userId must be a UUID", userId },
+        { status: 400 }
+      );
+    }
+
+    const force = Boolean(body?.force);
 
     console.log("[/api/nefeli/today] HIT", { userId, force, intent: body?.intent });
 
@@ -114,7 +125,7 @@ export async function POST(req: Request) {
     if (!force) {
       const { data: cached, error: cacheError } = await supabaseAdmin
         .from("ai_guidance")
-        .select("title, bullets, why, source, intent, day_key, guidance_json")
+        .select("id, title, bullets, why, source, intent, day_key, guidance_json")
         .eq("user_id", userId)
         .eq("day_key", dayKey)
         .eq("intent", effectiveIntent)
@@ -142,6 +153,7 @@ export async function POST(req: Request) {
               source: cached.source,
               intent: cached.intent,
               day_key: cached.day_key,
+              guidance_id: cached.id,
             },
             { status: 200 }
           );
@@ -163,6 +175,7 @@ export async function POST(req: Request) {
             source: cached.source,
             intent: cached.intent,
             day_key: cached.day_key,
+            guidance_id: cached.id,
           },
           { status: 200 }
         );
@@ -275,9 +288,11 @@ Return ONLY JSON. No markdown.`;
       // ❌ remove avoid: parsedResponse.avoid
     };
 
-    const { error: writeErr } = await supabaseAdmin
-        .from("ai_guidance")
-      .upsert(writePayload, { onConflict: "user_id,day_key,intent,source" });
+    const { data: savedGuidance, error: writeErr } = await supabaseAdmin
+      .from("ai_guidance")
+      .upsert(writePayload, { onConflict: "user_id,day_key,intent,source" })
+      .select("id")
+      .single();
 
     if (writeErr) {
       console.error("Supabase write failed:", writeErr);
@@ -301,6 +316,7 @@ Return ONLY JSON. No markdown.`;
         source,
         intent: effectiveIntent,
         day_key: dayKey,
+        guidance_id: savedGuidance?.id || null,
       },
       { status: 200 }
     );

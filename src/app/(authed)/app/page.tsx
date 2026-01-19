@@ -55,10 +55,24 @@ export default function AppPage() {
     birth_time: string | null;
   } | null>(null);
   const [guidanceError, setGuidanceError] = useState<string | null>(null);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState<1 | -1 | null>(null);
+  const [feedbackReasons, setFeedbackReasons] = useState<string[]>([]);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [examples, setExamples] = useState<Array<{ id: string; storage_path: string; signed_url: string | null; alt_text: string | null }>>([]);
+  const [loadingExamples, setLoadingExamples] = useState(false);
+  const [uploadingExample, setUploadingExample] = useState(false);
 
   useEffect(() => {
     loadUserAndGuidance();
   }, []);
+
+  useEffect(() => {
+    if (guidance?.id) {
+      loadExamples();
+    }
+  }, [guidance?.id]);
 
   async function loadUserAndGuidance() {
     const {
@@ -233,7 +247,7 @@ export default function AppPage() {
     if (payload?.ok === true && payload?.data) {
       // Map API response to Guidance type
       const guidanceData: Guidance = {
-        id: "",
+        id: payload.guidance_id || "",
         title: payload.data.title || "",
         bullets: [...(payload.data.rules || []), ...(payload.data.color_story || [])],
         why: payload.data.one_liner || "",
@@ -326,6 +340,183 @@ export default function AppPage() {
       minute: "2-digit",
     }).format(date);
   }
+
+  async function submitAdviceFeedback() {
+    if (!userId || !guidance || !feedbackRating) return;
+
+    setSubmittingFeedback(true);
+
+    const dayKey = getDayKey(userTimezone);
+    const intent = guidance.intent || "everyday";
+    const source = guidance.source || "today";
+
+    try {
+      const res = await fetch("/api/feedback/advice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          dayKey,
+          intent,
+          source,
+          rating: feedbackRating,
+          reasons: feedbackReasons,
+          comment: feedbackComment || null,
+        }),
+      });
+
+      if (res.ok) {
+        setFeedbackSubmitted(true);
+        setFeedbackRating(null);
+        setFeedbackReasons([]);
+        setFeedbackComment("");
+      }
+    } catch (error) {
+      console.error("Failed to submit feedback:", error);
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  }
+
+  async function loadExamples() {
+    if (!guidance?.id || !userId) return;
+    
+    setLoadingExamples(true);
+    try {
+      // Fetch image_links where guidance_id matches
+      const { data: links, error: linksError } = await supabase
+        .from("image_links")
+        .select("image_id")
+        .eq("guidance_id", guidance.id);
+
+      if (linksError) {
+        console.error("Failed to load image links:", linksError);
+        setLoadingExamples(false);
+        return;
+      }
+
+      if (!links || links.length === 0) {
+        setExamples([]);
+        setLoadingExamples(false);
+        return;
+      }
+
+      // Fetch images by image_id
+      const imageIds = links.map((link) => link.image_id);
+      const { data: images, error: imagesError } = await supabase
+        .from("images")
+        .select("id, storage_path, alt_text, bucket")
+        .in("id", imageIds);
+
+      if (imagesError) {
+        console.error("Failed to load images:", imagesError);
+        setLoadingExamples(false);
+        return;
+      }
+
+      // Generate signed URLs for each image
+      const examplesWithUrls = await Promise.all(
+        (images || []).map(async (img) => {
+          const { data: signedData } = await supabase.storage
+            .from(img.bucket || "nefeli-images")
+            .createSignedUrl(img.storage_path, 3600); // 1 hour expiry
+
+          return {
+            id: img.id,
+            storage_path: img.storage_path,
+            signed_url: signedData?.signedUrl || null,
+            alt_text: img.alt_text,
+          };
+        })
+      );
+
+      setExamples(examplesWithUrls);
+    } catch (error) {
+      console.error("Failed to load examples:", error);
+    } finally {
+      setLoadingExamples(false);
+    }
+  }
+
+  async function handleAddExample(file: File) {
+    if (!userId || !guidance?.id || uploadingExample) return;
+
+    setUploadingExample(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Generate storage path: ${userId}/${guidance.id}/${uuid}.jpg
+      const ext = file.name.split(".").pop() || "jpg";
+      const imageId = crypto.randomUUID();
+      const storagePath = `${userId}/${guidance.id}/${imageId}.${ext}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from("nefeli-images")
+        .upload(storagePath, file);
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      // Insert into public.images
+      const { data: imageRow, error: imageError } = await supabase
+        .from("images")
+        .insert({
+          created_by: user.id,
+          storage_path: storagePath,
+          bucket: "nefeli-images",
+          visibility: "private",
+          status: "approved",
+        })
+        .select("id")
+        .single();
+
+      if (imageError) {
+        throw new Error(imageError.message);
+      }
+
+      // Insert into public.image_links
+      const { error: linkError } = await supabase
+        .from("image_links")
+        .insert({
+          image_id: imageRow.id,
+          guidance_id: guidance.id,
+        });
+
+      if (linkError) {
+        throw new Error(linkError.message);
+      }
+
+      // Reload examples
+      await loadExamples();
+    } catch (error: any) {
+      console.error("Failed to add example:", error);
+      setToastType("error");
+      setSaveToast(error?.message || "Failed to upload image");
+      setTimeout(() => {
+        setSaveToast(null);
+      }, 3000);
+    } finally {
+      setUploadingExample(false);
+    }
+  }
+
+  function buildSearchQuery(): string {
+    if (!guidance) return "";
+    const title = guidance.title || "";
+    const bullets = guidance.bullets.slice(0, 3).join(" ");
+    return `${title} ${bullets}`.trim();
+  }
+
+  const feedbackReasonsOptions = [
+    "Too generic",
+    "Not relevant to my style",
+    "Helpful and specific",
+    "Great color suggestions",
+    "Perfect for the occasion",
+  ];
 
   const occasions = [
     "Job interview",
@@ -552,6 +743,90 @@ export default function AppPage() {
           ))}
         </ul>
 
+        {/* Examples */}
+        <div className="mb-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-neutral-200">Examples</h3>
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleAddExample(file);
+                }}
+                disabled={uploadingExample}
+              />
+              <span className="text-xs text-neutral-400 hover:text-neutral-200 transition-colors">
+                {uploadingExample ? "Uploading..." : "+ Add example"}
+              </span>
+            </label>
+          </div>
+          {loadingExamples ? (
+            <div className="text-xs text-neutral-500">Loading examples...</div>
+          ) : examples.length > 0 ? (
+            <div className="grid grid-cols-3 gap-2">
+              {examples.map((example) => (
+                <div key={example.id} className="relative aspect-square rounded-lg overflow-hidden border border-neutral-800 bg-neutral-950">
+                  {example.signed_url ? (
+                    <img
+                      src={example.signed_url}
+                      alt={example.alt_text || "Example"}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                        const parent = target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-xs text-neutral-600">Failed to load</div>';
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-neutral-600">Loading...</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-neutral-500">No examples yet. Add one to get started!</div>
+          )}
+        </div>
+
+        {/* Get fresh ideas */}
+        {guidance && (
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-neutral-400 mb-2">Get fresh ideas</h3>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={`https://www.pinterest.com/search/pins/?q=${encodeURIComponent(buildSearchQuery())}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-neutral-400 hover:text-neutral-200 underline-offset-4 hover:underline transition-colors"
+              >
+                Pinterest
+              </a>
+              <a
+                href={`https://www.tiktok.com/search?q=${encodeURIComponent(buildSearchQuery())}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-neutral-400 hover:text-neutral-200 underline-offset-4 hover:underline transition-colors"
+              >
+                TikTok
+              </a>
+              <a
+                href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(buildSearchQuery())}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-neutral-400 hover:text-neutral-200 underline-offset-4 hover:underline transition-colors"
+              >
+                Google Images
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Why */}
         <div className="mb-6 rounded-xl border border-neutral-800 bg-neutral-950/50 p-4">
           <p className="text-sm text-neutral-400">{guidance.why}</p>
@@ -582,6 +857,99 @@ export default function AppPage() {
           </button>
         </div>
       </div>
+
+      {/* Advice Feedback */}
+      {guidance && !feedbackSubmitted && (
+        <div className="mt-6 rounded-xl border border-neutral-800 bg-neutral-900/50 p-6">
+          <h3 className="text-sm font-semibold text-neutral-200 mb-4">How was this advice?</h3>
+          <div className="space-y-4">
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setFeedbackRating(1)}
+                className={`flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                  feedbackRating === 1
+                    ? "border-green-600 bg-green-950/20 text-green-400"
+                    : "border-neutral-700 bg-transparent text-neutral-300 hover:bg-neutral-900"
+                }`}
+              >
+                👍 Helpful
+              </button>
+              <button
+                type="button"
+                onClick={() => setFeedbackRating(-1)}
+                className={`flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                  feedbackRating === -1
+                    ? "border-red-600 bg-red-950/20 text-red-400"
+                    : "border-neutral-700 bg-transparent text-neutral-300 hover:bg-neutral-900"
+                }`}
+              >
+                👎 Not helpful
+              </button>
+            </div>
+
+            {feedbackRating && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-400 mb-2">
+                    Why? (optional)
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {feedbackReasonsOptions.map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        onClick={() => {
+                          setFeedbackReasons((prev) =>
+                            prev.includes(reason)
+                              ? prev.filter((r) => r !== reason)
+                              : [...prev, reason]
+                          );
+                        }}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          feedbackReasons.includes(reason)
+                            ? "bg-neutral-50 text-neutral-950"
+                            : "border border-neutral-700 bg-transparent text-neutral-300 hover:bg-neutral-900"
+                        }`}
+                      >
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-neutral-400 mb-2">
+                    Additional comments (optional)
+                  </label>
+                  <textarea
+                    value={feedbackComment}
+                    onChange={(e) => setFeedbackComment(e.target.value)}
+                    rows={2}
+                    placeholder="Tell us more..."
+                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={submitAdviceFeedback}
+                  disabled={submittingFeedback}
+                  className="rounded-xl bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-100 disabled:opacity-50"
+                >
+                  {submittingFeedback ? "Submitting..." : "Submit feedback"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {feedbackSubmitted && (
+        <div className="mt-6 rounded-lg border border-green-800/50 bg-green-950/20 p-4 text-sm text-green-400">
+          Thank you for your feedback!
+        </div>
+      )}
 
       {/* Earlier Today History */}
       {historyItems.length > 0 && (
