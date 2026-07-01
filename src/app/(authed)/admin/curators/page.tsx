@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -35,47 +36,41 @@ export default function AdminCuratorsPage() {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
+    // Authorization is enforced server-side by /api/admin/curators; the client
+    // gate below is only for UX (redirecting non-admins away).
+    const res = await authedFetch("/api/admin/curators", { method: "GET" });
 
-    if (profile?.role !== "admin") {
+    if (res.status === 401) {
+      router.push("/login");
+      return;
+    }
+    if (!res.ok) {
       router.push("/app");
       return;
     }
 
+    const json = await res.json();
     setIsAdmin(true);
-    await loadApplicants();
+    setApplicants((json.applicants ?? []) as Applicant[]);
     setLoading(false);
   }
 
   async function loadApplicants() {
-    const { data } = await supabase
-      .from("profiles")
-      .select("user_id, display_name, curator_status, curator_bio, curator_specialties, public_handle")
-      .eq("curator_status", "applied")
-      .order("user_id", { ascending: false });
-
-    if (data) {
-      setApplicants(data as Applicant[]);
-    }
+    const res = await authedFetch("/api/admin/curators", { method: "GET" });
+    if (!res.ok) return;
+    const json = await res.json();
+    setApplicants((json.applicants ?? []) as Applicant[]);
   }
 
   async function handleApprove(userId: string, tier: string = "contributor") {
     setProcessing(userId);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        role: "curator",
-        curator_status: "approved",
-        curator_tier: tier,
-      })
-      .eq("user_id", userId);
+    const res = await authedFetch("/api/admin/curators", {
+      method: "POST",
+      body: JSON.stringify({ action: "approve", targetUserId: userId, tier }),
+    });
 
-    if (error) {
-      console.error("Error approving:", error);
+    if (!res.ok) {
+      console.error("Error approving:", await res.text());
     } else {
       await loadApplicants();
     }
@@ -84,15 +79,13 @@ export default function AdminCuratorsPage() {
 
   async function handleReject(userId: string) {
     setProcessing(userId);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        curator_status: "rejected",
-      })
-      .eq("user_id", userId);
+    const res = await authedFetch("/api/admin/curators", {
+      method: "POST",
+      body: JSON.stringify({ action: "reject", targetUserId: userId }),
+    });
 
-    if (error) {
-      console.error("Error rejecting:", error);
+    if (!res.ok) {
+      console.error("Error rejecting:", await res.text());
     } else {
       await loadApplicants();
     }
@@ -200,14 +193,6 @@ export default function AdminCuratorsPage() {
                   onClick={() => handleReject(applicant.user_id)}
                   disabled={processing === applicant.user_id}
                   className="flex-1 rounded-xl border border-red-700 bg-transparent px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-950/20 disabled:opacity-50"
-                >
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleReject(applicant.user_id)}
-                  disabled={processing === applicant.user_id}
-                  className="rounded-xl border border-red-700 bg-transparent px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-950/20 disabled:opacity-50"
                 >
                   Reject
                 </button>
