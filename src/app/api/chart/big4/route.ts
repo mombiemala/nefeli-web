@@ -3,6 +3,7 @@ import * as Astronomy from "astronomy-engine";
 import { DateTime } from "luxon";
 import tzlookup from "tz-lookup";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
+import { errorMessage } from "@/lib/errors";
 
 const SIGNS = [
   "Aries","Taurus","Gemini","Cancer","Leo","Virgo",
@@ -179,9 +180,9 @@ export async function POST(req: Request) {
         mc: mc.sign,
       },
     });
-  } catch (e: any) {
+  } catch (e) {
     console.error("big4 generate error:", e);
-    return NextResponse.json({ error: e?.message ?? "Internal error" }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
   }
 }
 

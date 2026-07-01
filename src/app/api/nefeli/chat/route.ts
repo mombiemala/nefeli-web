@@ -4,6 +4,7 @@ import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 import { parseModelJson } from "@/lib/ai/parseJson";
+import { errorMessage } from "@/lib/errors";
 
 const responseSchema = z.object({
   headline: z.string(),
@@ -166,10 +167,10 @@ Requirements:
       { ok: true, data: parsedResponse },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Chat API error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to generate response" },
+      { error: errorMessage(error) || "Failed to generate response" },
       { status: 500 }
     );
   }

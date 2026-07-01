@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   const admin = await requireAdmin(req);
   if (admin instanceof NextResponse) return admin;
 
-  let body: any = {};
+  let body: Record<string, unknown> = {};
   try {
     body = await req.json();
   } catch {

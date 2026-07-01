@@ -4,6 +4,7 @@ import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 import { parseModelJson } from "@/lib/ai/parseJson";
+import { errorMessage } from "@/lib/errors";
 
 const capsuleSchema = z.object({
   title: z.string(),
@@ -161,7 +162,7 @@ Requirements:
           { status: 500 }
         );
       }
-    } catch (openaiError: any) {
+    } catch (openaiError) {
       console.error("OpenAI error:", openaiError);
       return NextResponse.json(
         { error: "Failed to generate capsule" },
@@ -174,10 +175,10 @@ Requirements:
       { ok: true, data: parsedResponse },
       { status: 200 }
     );
-  } catch (e: any) {
+  } catch (e) {
     console.error("capsule route error", e);
     return NextResponse.json(
-      { error: e?.message ?? "Internal error" },
+      { error: errorMessage(e) },
       { status: 500 }
     );
   }

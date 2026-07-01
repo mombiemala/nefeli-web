@@ -4,6 +4,7 @@ import { z } from "zod";
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 import { parseModelJson } from "@/lib/ai/parseJson";
+import { errorMessage } from "@/lib/errors";
 
 const guidanceSchema = z.object({
   title: z.string(),
@@ -290,10 +291,10 @@ Return ONLY JSON. No markdown.`;
       },
       { status: 200 }
     );
-  } catch (e: any) {
+  } catch (e) {
     console.error("today route crashed:", e);
     return NextResponse.json(
-      { error: "today route crashed", message: e?.message ?? String(e) },
+      { error: "today route crashed", message: errorMessage(e) },
       { status: 500 }
     );
   }

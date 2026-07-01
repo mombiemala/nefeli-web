@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
+import { errorMessage } from "@/lib/errors";
 
 export async function POST(req: Request) {
   try {
@@ -46,10 +47,10 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true }, { status: 200 });
-  } catch (e: any) {
+  } catch (e) {
     console.error("Advice feedback route error:", e);
     return NextResponse.json(
-      { error: "Internal server error", message: e?.message },
+      { error: "Internal server error", message: errorMessage(e) },
       { status: 500 }
     );
   }
