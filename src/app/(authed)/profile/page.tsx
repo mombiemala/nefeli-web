@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api";
 import Link from "next/link";
 import LocationAutocomplete from "@/components/LocationAutocomplete";
 
@@ -333,10 +334,9 @@ export default function ProfilePage() {
     setRecalcToast(null);
 
     try {
-      const res = await fetch("/api/chart/generate", {
+      const res = await authedFetch("/api/chart/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId }),
+        body: JSON.stringify({}),
       });
 
       const data = await res.json();
@@ -557,10 +557,9 @@ export default function ProfilePage() {
       return;
     }
 
-    const res = await fetch("/api/chart/big4", {
+    const res = await authedFetch("/api/chart/big4", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: user.id }),
+      body: JSON.stringify({}),
     });
 
     const json = await res.json();

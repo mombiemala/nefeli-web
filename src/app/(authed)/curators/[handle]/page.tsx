@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -123,11 +124,9 @@ export default function CuratorProfilePage() {
     setSubmittingFeedback(imageId);
 
     try {
-      const res = await fetch("/api/feedback/image", {
+      const res = await authedFetch("/api/feedback/image", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,
           imageId,
           feedbackType,
           metadata: {},

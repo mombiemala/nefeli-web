@@ -2,12 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { z } from "zod";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 
 const guidanceSchema = z.object({
   title: z.string(),
@@ -54,41 +49,19 @@ export async function POST(req: Request) {
       );
     }
 
-    const userId = body?.userId;
+    // --- Authenticate: derive the acting user from the verified access token ---
+    const userId = await getAuthedUserId(req);
 
     if (!userId) {
       return NextResponse.json(
-        { error: "Unauthorized", message: "Missing userId" },
+        { error: "Unauthorized", message: "Missing or invalid access token" },
         { status: 401 }
-      );
-    }
-
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-    if (!uuidRegex.test(userId)) {
-      return NextResponse.json(
-        { error: "Bad request", message: "userId must be a UUID", userId },
-        { status: 400 }
       );
     }
 
     const force = Boolean(body?.force);
 
     console.log("[/api/nefeli/today] HIT", { userId, force, intent: body?.intent });
-
-    // --- Verify user exists ---
-    const { data: authData, error: authError } =
-      await supabaseAdmin.auth.admin.getUserById(userId);
-
-    const authUser = authData?.user;
-
-    if (authError || !authUser) {
-      return NextResponse.json(
-        { error: "Unauthorized", message: authError?.message || "User not found" },
-        { status: 401 }
-      );
-    }
 
     // --- Read optional request intent/occasion ---
     const requestedIntent =

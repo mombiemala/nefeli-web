@@ -2,12 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 
 const responseSchema = z.object({
   headline: z.string(),
@@ -60,20 +55,15 @@ const safeFallback: ResponseData = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, message } = await req.json();
+    const { message } = await req.json();
 
+    const userId = await getAuthedUserId(req);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
-    }
-
-    // Verify user exists
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
-    if (authError || !authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Fetch user profile with birth details to check completeness

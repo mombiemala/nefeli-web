@@ -2,12 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 
 const capsuleSchema = z.object({
   title: z.string(),
@@ -46,20 +41,14 @@ export async function POST(req: NextRequest) {
       body = await req.json();
     } catch {}
 
-    const userId = (body as any).userId;
     const intent = (body as any).intent || "everyday";
     const season = (body as any).season || null;
     const colorVibe = (body as any).colorVibe || null;
     const dressCode = (body as any).dressCode || null;
     const notes = (body as any).notes || null;
 
+    const userId = await getAuthedUserId(req);
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify user exists
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
-    if (authError || !authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

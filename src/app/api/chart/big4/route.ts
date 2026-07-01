@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import * as Astronomy from "astronomy-engine";
 import { DateTime } from "luxon";
 import tzlookup from "tz-lookup";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 
 const SIGNS = [
   "Aries","Taurus","Gemini","Cancer","Leo","Virgo",
@@ -45,24 +45,12 @@ function calcAscendant(lstDeg: number, latDeg: number, epsDeg: number) {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { user_id } = body ?? {};
-
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json(
-        { error: "Missing SUPABASE env vars." },
-        { status: 500 }
-      );
-    }
-
+    const user_id = await getAuthedUserId(req);
     if (!user_id) {
-      return NextResponse.json({ error: "Missing user_id." }, { status: 400 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const supabase = supabaseAdmin;
 
     // Pull birth info from DB (single source of truth)
     const { data: profile, error: profReadErr } = await supabase
