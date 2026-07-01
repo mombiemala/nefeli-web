@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
+import { parseModelJson } from "@/lib/ai/parseJson";
 
 const capsuleSchema = z.object({
   title: z.string(),
@@ -151,19 +152,7 @@ Requirements:
 
       // Parse and validate the response
       try {
-        // Try to extract JSON from the response (handle cases where model adds markdown code blocks)
-        let jsonText = result.text.trim();
-        // Remove markdown code blocks if present
-        if (jsonText.startsWith("```")) {
-          const lines = jsonText.split("\n");
-          lines.shift(); // Remove first line (```json or ```)
-          if (lines[lines.length - 1].trim() === "```") {
-            lines.pop(); // Remove last line (```)
-          }
-          jsonText = lines.join("\n");
-        }
-
-        parsedResponse = capsuleSchema.parse(JSON.parse(jsonText));
+        parsedResponse = capsuleSchema.parse(parseModelJson(result.text));
       } catch (parseError) {
         console.error("Failed to parse capsule response:", parseError);
         console.error("Raw response:", result.text);

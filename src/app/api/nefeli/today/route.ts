@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
+import { parseModelJson } from "@/lib/ai/parseJson";
 
 const guidanceSchema = z.object({
   title: z.string(),
@@ -219,11 +220,7 @@ Return ONLY JSON. No markdown.`;
     });
 
     // --- Parse ---
-      let jsonText = result.text.trim();
-    if (jsonText.startsWith("```json")) jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-    if (jsonText.startsWith("```")) jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
-      
-    const parsedResponse = guidanceSchema.parse(JSON.parse(jsonText));
+    const parsedResponse = guidanceSchema.parse(parseModelJson(result.text));
 
     // --- Prepare write ---
     const anchors = {

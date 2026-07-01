@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
+import { parseModelJson } from "@/lib/ai/parseJson";
 
 const responseSchema = z.object({
   headline: z.string(),
@@ -152,17 +153,7 @@ Requirements:
     // Parse and validate the response
     let parsedResponse: ResponseData;
     try {
-      // Try to extract JSON from the response (handle cases where model adds markdown code blocks)
-      let jsonText = result.text.trim();
-      // Remove markdown code blocks if present
-      if (jsonText.startsWith("```json")) {
-        jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-      } else if (jsonText.startsWith("```")) {
-        jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
-      }
-      
-      const parsed = JSON.parse(jsonText);
-      parsedResponse = responseSchema.parse(parsed);
+      parsedResponse = responseSchema.parse(parseModelJson(result.text));
     } catch (parseError) {
       // If parsing fails, log error and return safe fallback
       console.error("Failed to parse AI response:", parseError);
