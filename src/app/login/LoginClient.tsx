@@ -76,6 +76,30 @@ export default function LoginClient() {
     }
   }
 
+  async function handleForgotPassword() {
+    if (!email) {
+      setStatus({
+        type: "error",
+        message: "Enter your email above first, then tap “Forgot password.”",
+      });
+      return;
+    }
+    setLoading(true);
+    setStatus(null);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) {
+      setStatus({ type: "error", message: error.message });
+    } else {
+      setStatus({
+        type: "success",
+        message: "If that email has an account, a reset link is on its way. Check your inbox and spam.",
+      });
+    }
+  }
+
   // Signup success state - "Check your email"
   if (mode === "signup" && emailSent) {
     return (
@@ -181,6 +205,16 @@ export default function LoginClient() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <div className="mt-2 text-right">
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    disabled={loading}
+                    className="text-xs font-medium text-neutral-400 underline-offset-4 hover:text-neutral-200 hover:underline disabled:opacity-50"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
               </div>
 
               {status && (

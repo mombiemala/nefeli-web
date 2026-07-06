@@ -70,8 +70,9 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  -- Admins may set anything.
-  if public.is_admin() then
+  -- Trusted server contexts (service_role, e.g. the admin curator route) and
+  -- admins may set anything. Non-admin users acting with their own token cannot.
+  if auth.role() = 'service_role' or public.is_admin() then
     return new;
   end if;
 
