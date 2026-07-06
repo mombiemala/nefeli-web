@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import * as Astronomy from "astronomy-engine";
 import { DateTime } from "luxon";
 import tzlookup from "tz-lookup";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
+import { errorMessage } from "@/lib/errors";
 
 const SIGNS = [
   "Aries","Taurus","Gemini","Cancer","Leo","Virgo",
@@ -45,24 +46,12 @@ function calcAscendant(lstDeg: number, latDeg: number, epsDeg: number) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { user_id } = body ?? {};
-
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json(
-        { error: "Missing SUPABASE env vars." },
-        { status: 500 }
-      );
-    }
-
+    const user_id = await getAuthedUserId(req);
     if (!user_id) {
-      return NextResponse.json({ error: "Missing user_id." }, { status: 400 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const supabase = supabaseAdmin;
 
     // Fetch lat and lng from profiles
     const { data: profile, error: profReadErr } = await supabase
@@ -222,10 +211,10 @@ export async function POST(req: NextRequest) {
         mc: mc.sign,
       },
     });
-  } catch (e: any) {
+  } catch (e) {
     console.error("chart generate error:", e);
     return NextResponse.json(
-      { error: e?.message ?? "Internal error" },
+      { error: errorMessage(e) },
       { status: 500 }
     );
   }

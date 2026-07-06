@@ -21,12 +21,16 @@ export default function BoardsPage() {
   const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     loadBoards();
   }, []);
 
   async function loadBoards() {
+    setLoading(true);
+    setLoadError(null);
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -44,6 +48,7 @@ export default function BoardsPage() {
 
     if (fetchError) {
       console.error(fetchError);
+      setLoadError("We couldn't load your boards. Please try again.");
       setLoading(false);
       return;
     }
@@ -108,6 +113,25 @@ export default function BoardsPage() {
       <div className="flex min-h-screen items-center justify-center bg-neutral-950">
         <div className="text-center">
           <p className="text-neutral-400">Loading…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Load error state (distinct from "no boards yet")
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="rounded-2xl border border-red-900/50 bg-red-950/20 p-8 text-center">
+          <h1 className="text-lg font-semibold text-neutral-50 mb-2">Something went wrong</h1>
+          <p className="text-sm text-neutral-400 mb-6">{loadError}</p>
+          <button
+            type="button"
+            onClick={loadBoards}
+            className="rounded-xl bg-neutral-50 px-5 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
+          >
+            Try again
+          </button>
         </div>
       </div>
     );

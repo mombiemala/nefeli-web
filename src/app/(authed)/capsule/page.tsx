@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api";
 import Link from "next/link";
 
 type Intent = "work" | "date" | "everyday" | "staples";
@@ -85,11 +86,9 @@ export default function CapsulePage() {
     setCapsule(null);
 
     try {
-      const res = await fetch("/api/nefeli/capsule", {
+      const res = await authedFetch("/api/nefeli/capsule", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,
           intent,
           season: season !== "Any" ? season : null,
           colorVibe: colorVibe !== "Any" ? colorVibe : null,

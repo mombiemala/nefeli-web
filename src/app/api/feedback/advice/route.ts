@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
+import { errorMessage } from "@/lib/errors";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { userId, dayKey, intent, source, rating, reasons, comment } = body;
+    const userId = await getAuthedUserId(req);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!userId || !dayKey || !intent || !source || !rating) {
+    const body = await req.json();
+    const { dayKey, intent, source, rating, reasons, comment } = body;
+
+    if (!dayKey || !intent || !source || !rating) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -46,10 +47,10 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true }, { status: 200 });
-  } catch (e: any) {
+  } catch (e) {
     console.error("Advice feedback route error:", e);
     return NextResponse.json(
-      { error: "Internal server error", message: e?.message },
+      { error: "Internal server error", message: errorMessage(e) },
       { status: 500 }
     );
   }

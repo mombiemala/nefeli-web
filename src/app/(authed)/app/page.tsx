@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api";
 import Link from "next/link";
 import SaveToBoardModal from "@/components/SaveToBoardModal";
 
@@ -188,11 +189,9 @@ export default function AppPage() {
     const occasion = options?.occasion ?? null;
     const force = options?.force ?? false;
 
-      const res = await fetch("/api/nefeli/today", {
+      const res = await authedFetch("/api/nefeli/today", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userId: user.id,
         intent,
         occasion,
         force,
@@ -351,11 +350,9 @@ export default function AppPage() {
     const source = guidance.source || "today";
 
     try {
-      const res = await fetch("/api/feedback/advice", {
+      const res = await authedFetch("/api/feedback/advice", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,
           dayKey,
           intent,
           source,

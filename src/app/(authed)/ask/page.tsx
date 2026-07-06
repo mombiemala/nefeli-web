@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api";
 import Link from "next/link";
 import SaveToBoardModal from "@/components/SaveToBoardModal";
 import type { OutfitItemJson } from "@/types/boardItems";
@@ -96,11 +97,9 @@ export default function AskPage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch("/api/nefeli/chat", {
+      const res = await authedFetch("/api/nefeli/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,
           message: text,
         }),
       });

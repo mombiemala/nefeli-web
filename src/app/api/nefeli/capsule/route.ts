@@ -2,12 +2,9 @@ import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
+import { parseModelJson } from "@/lib/ai/parseJson";
+import { errorMessage } from "@/lib/errors";
 
 const capsuleSchema = z.object({
   title: z.string(),
@@ -46,20 +43,14 @@ export async function POST(req: NextRequest) {
       body = await req.json();
     } catch {}
 
-    const userId = (body as any).userId;
     const intent = (body as any).intent || "everyday";
     const season = (body as any).season || null;
     const colorVibe = (body as any).colorVibe || null;
     const dressCode = (body as any).dressCode || null;
     const notes = (body as any).notes || null;
 
+    const userId = await getAuthedUserId(req);
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify user exists
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
-    if (authError || !authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -162,19 +153,7 @@ Requirements:
 
       // Parse and validate the response
       try {
-        // Try to extract JSON from the response (handle cases where model adds markdown code blocks)
-        let jsonText = result.text.trim();
-        // Remove markdown code blocks if present
-        if (jsonText.startsWith("```")) {
-          const lines = jsonText.split("\n");
-          lines.shift(); // Remove first line (```json or ```)
-          if (lines[lines.length - 1].trim() === "```") {
-            lines.pop(); // Remove last line (```)
-          }
-          jsonText = lines.join("\n");
-        }
-
-        parsedResponse = capsuleSchema.parse(JSON.parse(jsonText));
+        parsedResponse = capsuleSchema.parse(parseModelJson(result.text));
       } catch (parseError) {
         console.error("Failed to parse capsule response:", parseError);
         console.error("Raw response:", result.text);
@@ -183,7 +162,7 @@ Requirements:
           { status: 500 }
         );
       }
-    } catch (openaiError: any) {
+    } catch (openaiError) {
       console.error("OpenAI error:", openaiError);
       return NextResponse.json(
         { error: "Failed to generate capsule" },
@@ -196,10 +175,10 @@ Requirements:
       { ok: true, data: parsedResponse },
       { status: 200 }
     );
-  } catch (e: any) {
+  } catch (e) {
     console.error("capsule route error", e);
     return NextResponse.json(
-      { error: e?.message ?? "Internal error" },
+      { error: errorMessage(e) },
       { status: 500 }
     );
   }

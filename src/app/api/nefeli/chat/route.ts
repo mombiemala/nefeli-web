@@ -2,12 +2,9 @@ import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
+import { parseModelJson } from "@/lib/ai/parseJson";
+import { errorMessage } from "@/lib/errors";
 
 const responseSchema = z.object({
   headline: z.string(),
@@ -60,20 +57,15 @@ const safeFallback: ResponseData = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, message } = await req.json();
+    const { message } = await req.json();
 
+    const userId = await getAuthedUserId(req);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
-    }
-
-    // Verify user exists
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
-    if (authError || !authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Fetch user profile with birth details to check completeness
@@ -162,17 +154,7 @@ Requirements:
     // Parse and validate the response
     let parsedResponse: ResponseData;
     try {
-      // Try to extract JSON from the response (handle cases where model adds markdown code blocks)
-      let jsonText = result.text.trim();
-      // Remove markdown code blocks if present
-      if (jsonText.startsWith("```json")) {
-        jsonText = jsonText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-      } else if (jsonText.startsWith("```")) {
-        jsonText = jsonText.replace(/^```\s*/, "").replace(/\s*```$/, "");
-      }
-      
-      const parsed = JSON.parse(jsonText);
-      parsedResponse = responseSchema.parse(parsed);
+      parsedResponse = responseSchema.parse(parseModelJson(result.text));
     } catch (parseError) {
       // If parsing fails, log error and return safe fallback
       console.error("Failed to parse AI response:", parseError);
@@ -185,10 +167,10 @@ Requirements:
       { ok: true, data: parsedResponse },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Chat API error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to generate response" },
+      { error: errorMessage(error) || "Failed to generate response" },
       { status: 500 }
     );
   }
