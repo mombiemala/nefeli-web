@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-night text-cream font-sans antialiased;
+  background-image: radial-gradient(
+      ellipse 120% 80% at 50% -10%,
+      rgba(26, 11, 46, 0.9) 0%,
+      rgba(13, 17, 23, 1) 55%
+    );
+  background-attachment: fixed;
+}
+
+@layer components {
+  .glass {
+    @apply rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-md shadow-glass;
+  }
+  .glass-strong {
+    @apply rounded-2xl border border-gold/20 bg-night-800/60 backdrop-blur-lg shadow-glass;
+  }
+  .gold-text {
+    @apply text-gold;
+  }
+  .heading {
+    @apply font-serif tracking-tight text-cream;
+  }
+  .subtle {
+    @apply text-cream-muted;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-gold text-night hover:bg-gold-soft;
+  }
+  .btn-ghost {
+    @apply btn border border-white/15 text-cream hover:bg-white/5;
+  }
+  .input {
+    @apply w-full rounded-xl border border-white/10 bg-night-800/70 px-4 py-2.5 text-cream
+      placeholder:text-cream-dim focus:border-gold/50 focus:outline-none focus:ring-1 focus:ring-gold/40;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wider text-cream-muted;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-gold/25 bg-gold/5 px-3 py-1 text-xs text-gold-soft;
+  }
+}
+
+/* Thin, elegant scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 168, 76, 0.3) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.28);
+  border-radius: 9999px;
+}
+
+/* Decorative starfield (CSS only) */
+.starfield::before,
+.starfield::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(245, 230, 192, 0.8), transparent),
+    radial-gradient(1px 1px at 75% 15%, rgba(245, 230, 192, 0.6), transparent),
+    radial-gradient(1px 1px at 40% 70%, rgba(201, 168, 76, 0.7), transparent),
+    radial-gradient(1px 1px at 85% 60%, rgba(245, 230, 192, 0.5), transparent),
+    radial-gradient(1px 1px at 60% 85%, rgba(201, 168, 76, 0.5), transparent),
+    radial-gradient(1px 1px at 10% 80%, rgba(245, 230, 192, 0.6), transparent);
+  background-repeat: repeat;
+  animation: twinkle 6s ease-in-out infinite;
+}
+.starfield::after {
+  animation-delay: 3s;
+  opacity: 0.5;
+}

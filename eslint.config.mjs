@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Preserved Luminary reference source — not part of the app build.
+    "reference/**",
   ]),
 ]);
 

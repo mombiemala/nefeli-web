@@ -1,0 +1,254 @@
+// Luminary — Prisma schema
+// A deeply personal AI astrology companion.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auth (NextAuth.js models + app User)
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id                    String   @id @default(cuid())
+  email                 String   @unique
+  name                  String?
+  emailVerified         DateTime?
+  image                 String?
+  hasCompletedOnboarding Boolean @default(false)
+  location              String?  // free-form current location for local-time context
+  timezone              String?  // IANA tz, e.g. "America/New_York"
+  plan                  Plan     @default(FREE)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  birthProfiles  BirthProfile[]
+  lifeContexts   UserLifeContext[]
+  declarations   UserDeclaration[]
+  conversations  Conversation[]
+  dailyGuidance  DailyGuidance[]
+  monthlyGuides  MonthlyGuide[]
+  insights       UserInsight[]
+}
+
+enum Plan {
+  FREE
+  PREMIUM
+  FOUNDING
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Core domain
+// ─────────────────────────────────────────────────────────────
+
+model BirthProfile {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String   // "self", "Mom", "Partner", ...
+  birthDate   DateTime @db.Date
+  birthTime   String?  // "HH:mm" — nullable if unknown
+  timeUnknown Boolean  @default(false)
+  birthCity   String
+  birthCountry String
+  latitude    Float
+  longitude   Float
+  timezone    String
+  chartData   Json?    // full natal chart response from Astrologer API
+  chartXml    String?  @db.Text // AI-optimized context XML
+  chartSvgUrl String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum LifeCategory {
+  CAREER
+  RELATIONSHIPS
+  FAMILY
+  CREATIVE
+  HEALTH
+  SPIRITUAL
+  FINANCES
+  OTHER
+}
+
+model UserLifeContext {
+  id          String       @id @default(cuid())
+  userId      String
+  category    LifeCategory
+  title       String
+  description String       @db.Text
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model UserDeclaration {
+  id          String   @id @default(cuid())
+  userId      String
+  declaration String   @db.Text
+  contextNote String?  @db.Text
+  declaredAt  DateTime @default(now())
+  isActive    Boolean  @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum ConversationType {
+  CHART_READING
+  DAILY_GUIDANCE
+  TRANSIT_DEEP_DIVE
+  HEALING_SESSION
+  MONTHLY_GUIDE
+  LIFE_CONTEXT
+  DAILY_ADVICE
+  OPEN_CHAT
+}
+
+model Conversation {
+  id               String           @id @default(cuid())
+  userId           String
+  title            String           @default("New conversation")
+  conversationType ConversationType @default(OPEN_CHAT)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId])
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+model Message {
+  id             String      @id @default(cuid())
+  conversationId String
+  role           MessageRole
+  content        String      @db.Text
+  metadata       Json?       // transit snapshot, moon phase, etc.
+  createdAt      DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+enum EnergyLevel {
+  HIGH
+  MEDIUM
+  LOW
+  REST
+}
+
+model DailyGuidance {
+  id          String      @id @default(cuid())
+  userId      String
+  date        DateTime    @db.Date
+  moonSign    String
+  moonPhase   String
+  keyTransits Json        // array of key transits
+  guidance    String      @db.Text
+  prompt      String      @db.Text
+  energyLevel EnergyLevel @default(MEDIUM)
+  createdAt   DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+model MonthlyGuide {
+  id           String   @id @default(cuid())
+  userId       String
+  month        Int
+  year         Int
+  overview     String   @db.Text
+  moonPhases   Json
+  majorTransits Json
+  dailyGuides  Json     // condensed per-day advice
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month, year])
+  @@index([userId])
+}
+
+enum InsightType {
+  PATTERN
+  WOUND
+  STRENGTH
+  THEME
+  TRANSIT_THEME
+}
+
+model UserInsight {
+  id                  String      @id @default(cuid())
+  userId              String
+  insightType         InsightType
+  title               String
+  content             String      @db.Text
+  sourceConversationId String?
+  createdAt           DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
