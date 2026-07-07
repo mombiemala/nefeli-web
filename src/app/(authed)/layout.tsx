@@ -9,6 +9,7 @@ const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/app", label: "Today" },
   { href: "/ask", label: "Chat" },
   { href: "/chart", label: "Chart" },
+  { href: "/transits", label: "Transits" },
   { href: "/memory", label: "Memory" },
 ];
 
