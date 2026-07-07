@@ -12,6 +12,7 @@ const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/transits", label: "Transits" },
   { href: "/monthly", label: "Monthly" },
   { href: "/memory", label: "Memory" },
+  { href: "/profile", label: "Profile" },
 ];
 
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {

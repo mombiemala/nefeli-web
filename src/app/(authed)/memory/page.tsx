@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
 
-type Insight = { id: string; insight_type: string; title: string; content: string; created_at: string };
+type Insight = { id: string; title: string; content: string; created_at: string };
 type LifeContext = { id: string; category: string; title: string; description: string };
 type Declaration = { id: string; declaration: string; context_note: string | null; declared_at: string };
 
-const CATEGORY_LABEL: Record<string, string> = {
-  career: "Career & work", relationships: "Relationships", family: "Family",
-  creative: "Creative practice", health: "Health & healing", spiritual: "Spiritual life",
-  finances: "Money", other: "Life",
-};
+const CATEGORIES: Array<[string, string]> = [
+  ["career", "Career & work"], ["relationships", "Relationships"], ["family", "Family"],
+  ["creative", "Creative practice"], ["health", "Health & healing"], ["spiritual", "Spiritual life"],
+  ["finances", "Money"], ["other", "Life"],
+];
+const CATEGORY_LABEL = Object.fromEntries(CATEGORIES);
 
 export default function MemoryPage() {
   const [loading, setLoading] = useState(true);
@@ -19,83 +20,118 @@ export default function MemoryPage() {
   const [contexts, setContexts] = useState<LifeContext[]>([]);
   const [declarations, setDeclarations] = useState<Declaration[]>([]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await authedFetch("/api/companion/memory", { method: "GET" });
-        const data = await res.json();
-        if (res.ok) {
-          setInsights(data.insights ?? []);
-          setContexts(data.lifeContexts ?? []);
-          setDeclarations(data.declarations ?? []);
-        }
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  const [ctxCategory, setCtxCategory] = useState("other");
+  const [ctxText, setCtxText] = useState("");
+  const [newDecl, setNewDecl] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  if (loading) {
-    return (
-      <div className="mx-auto max-w-2xl text-sm text-neutral-400">Gathering what I remember…</div>
-    );
+  async function load() {
+    const res = await authedFetch("/api/companion/memory", { method: "GET" });
+    const data = await res.json();
+    if (res.ok) {
+      setInsights(data.insights ?? []);
+      setContexts(data.lifeContexts ?? []);
+      setDeclarations(data.declarations ?? []);
+    }
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function addContext() {
+    if (!ctxText.trim() || busy) return;
+    setBusy(true);
+    await authedFetch("/api/companion/memory", {
+      method: "POST",
+      body: JSON.stringify({ kind: "life_context", category: ctxCategory, description: ctxText.trim() }),
+    });
+    setCtxText("");
+    await load();
+    setBusy(false);
+  }
+  async function addDeclaration() {
+    if (!newDecl.trim() || busy) return;
+    setBusy(true);
+    await authedFetch("/api/companion/memory", {
+      method: "POST",
+      body: JSON.stringify({ kind: "declaration", declaration: newDecl.trim() }),
+    });
+    setNewDecl("");
+    await load();
+    setBusy(false);
+  }
+  async function archive(kind: string, id: string) {
+    await authedFetch("/api/companion/memory", { method: "PATCH", body: JSON.stringify({ kind, id }) });
+    await load();
   }
 
-  const empty = !insights.length && !contexts.length && !declarations.length;
+  if (loading) return <div className="mx-auto max-w-2xl text-sm text-neutral-400">Gathering what I remember…</div>;
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-50">What I remember</h1>
-        <p className="mt-1 text-sm text-neutral-400">
-          Everything you’ve shared lives here. I read the sky through all of it.
-        </p>
+        <p className="mt-1 text-sm text-neutral-400">Everything you’ve shared. I read the sky through all of it — and you can tend it here.</p>
       </div>
 
-      {empty && (
-        <p className="text-sm text-neutral-500">
-          Nothing yet. Talk with me or check in on Today, and what matters will start to gather here.
-        </p>
-      )}
+      {/* Declarations */}
+      <section>
+        <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">You’re claiming</h2>
+        <div className="space-y-2">
+          {declarations.map((d) => (
+            <div key={d.id} className="flex items-start justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+              <p className="text-[15px] leading-7 text-neutral-100">“{d.declaration}”</p>
+              <button type="button" onClick={() => archive("declaration", d.id)} className="text-xs text-neutral-600 hover:text-neutral-300">archive</button>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 flex gap-2">
+          <input value={newDecl} onChange={(e) => setNewDecl(e.target.value)} placeholder="Something you’re claiming…"
+            className="flex-1 rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none" />
+          <button type="button" onClick={addDeclaration} disabled={busy || !newDecl.trim()}
+            className="rounded-lg bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-neutral-100 disabled:opacity-50">Add</button>
+        </div>
+      </section>
 
-      {declarations.length > 0 && (
-        <section>
-          <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">You’re claiming</h2>
-          <div className="space-y-2">
-            {declarations.map((d) => (
-              <div key={d.id} className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
-                <p className="text-[15px] leading-7 text-neutral-100">“{d.declaration}”</p>
-                {d.context_note && <p className="mt-1 text-xs text-neutral-500">{d.context_note}</p>}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {contexts.length > 0 && (
-        <section>
-          <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">What’s alive in your life</h2>
-          <div className="space-y-2">
-            {contexts.map((c) => (
-              <div key={c.id} className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+      {/* Life context */}
+      <section>
+        <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">What’s alive in your life</h2>
+        <div className="space-y-2">
+          {contexts.map((c) => (
+            <div key={c.id} className="flex items-start justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+              <div>
                 <p className="text-xs font-medium text-neutral-400">{CATEGORY_LABEL[c.category] ?? "Life"}</p>
                 <p className="mt-1 text-sm leading-6 text-neutral-200">{c.description}</p>
               </div>
-            ))}
+              <button type="button" onClick={() => archive("life_context", c.id)} className="text-xs text-neutral-600 hover:text-neutral-300">archive</button>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 space-y-2">
+          <div className="flex gap-2">
+            <select value={ctxCategory} onChange={(e) => setCtxCategory(e.target.value)}
+              className="rounded-lg border border-neutral-800 bg-neutral-900 px-2 py-2 text-sm text-neutral-200 focus:outline-none">
+              {CATEGORIES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+            <input value={ctxText} onChange={(e) => setCtxText(e.target.value)} placeholder="What’s present for you…"
+              className="flex-1 rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none" />
+            <button type="button" onClick={addContext} disabled={busy || !ctxText.trim()}
+              className="rounded-lg bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-neutral-100 disabled:opacity-50">Add</button>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
+      {/* Insights */}
       {insights.length > 0 && (
         <section>
           <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">Things you asked me to remember</h2>
           <div className="space-y-2">
             {insights.map((i) => (
-              <div key={i.id} className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
-                <p className="text-sm leading-6 text-neutral-200">{i.content}</p>
-                <p className="mt-1 text-xs text-neutral-600">
-                  {new Date(i.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                </p>
+              <div key={i.id} className="flex items-start justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+                <div>
+                  <p className="text-sm leading-6 text-neutral-200">{i.content}</p>
+                  <p className="mt-1 text-xs text-neutral-600">{new Date(i.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+                </div>
+                <button type="button" onClick={() => archive("insight", i.id)} className="text-xs text-neutral-600 hover:text-neutral-300">forget</button>
               </div>
             ))}
           </div>
