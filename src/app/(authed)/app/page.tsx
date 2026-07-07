@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
+import type { Transit } from "@/lib/astrology/types";
 
 type Guidance = {
   date: string;
@@ -23,6 +24,7 @@ export default function TodayPage() {
   const [loading, setLoading] = useState(true);
   const [guidance, setGuidance] = useState<Guidance | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [horizon, setHorizon] = useState<Transit | null>(null);
 
   // Check-in
   const [reflection, setReflection] = useState("");
@@ -40,6 +42,19 @@ export default function TodayPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Could not load today.");
         setGuidance(data.guidance);
+
+        // A gentle heads-up: the soonest intense transit still on the horizon.
+        try {
+          const tRes = await authedFetch("/api/companion/transits", { method: "GET" });
+          const tData = await tRes.json();
+          if (tRes.ok) {
+            const now = Date.now();
+            const upcoming = (tData.transits ?? [])
+              .filter((t: Transit) => +new Date(t.startDate) > now && t.intensity >= 4)
+              .sort((a: Transit, b: Transit) => +new Date(a.startDate) - +new Date(b.startDate));
+            setHorizon(upcoming[0] ?? null);
+          }
+        } catch { /* non-fatal */ }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not load today.");
       } finally {
@@ -111,6 +126,17 @@ export default function TodayPage() {
         <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Sit with this</p>
         <p className="mt-2 text-[15px] leading-7 text-neutral-100">{guidance.prompt}</p>
       </div>
+
+      {horizon && (
+        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/20 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">On the horizon</p>
+          <p className="mt-2 text-sm leading-6 text-neutral-300">
+            {horizon.glyph} {horizon.transitingPlanet} {horizon.aspect} {horizon.natalPlanet} is
+            forming around {new Date(horizon.exactDate).toLocaleDateString("en-US", { month: "long", day: "numeric" })}.
+            Nothing to brace for — just a window to move a little more gently with yourself.
+          </p>
+        </div>
+      )}
 
       {/* The 60-second check-in */}
       <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5">
