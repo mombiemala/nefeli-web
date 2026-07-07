@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
+import { CopyButton } from "@/components/CopyButton";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -53,6 +54,9 @@ export default function MonthlyPage() {
 
       <div className="space-y-4 text-[15px] leading-7 text-neutral-200">
         {guide.overview.split(/\n\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
+      </div>
+      <div className="flex justify-end">
+        <CopyButton text={`${MONTHS[guide.month - 1]} ${guide.year}\n\n${guide.overview}`} label="Copy overview" />
       </div>
 
       {moon && (
