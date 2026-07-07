@@ -12,6 +12,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^3.0.1",
     "@ai-sdk/react": "^3.0.3",
+    "@anthropic-ai/sdk": "^0.110.0",
     "@supabase/supabase-js": "^2.89.0",
     "ai": "^6.0.3",
     "astronomy-engine": "^2.1.19",
