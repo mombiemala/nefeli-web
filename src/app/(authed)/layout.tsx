@@ -9,7 +9,6 @@ const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/app", label: "Today" },
   { href: "/ask", label: "Chat" },
   { href: "/memory", label: "Memory" },
-  { href: "/profile", label: "Profile" },
 ];
 
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {
