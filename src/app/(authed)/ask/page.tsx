@@ -1,400 +1,156 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { authedFetch } from "@/lib/api";
-import Link from "next/link";
-import SaveToBoardModal from "@/components/SaveToBoardModal";
-import type { OutfitItemJson } from "@/types/boardItems";
 
-type OutfitOption = {
-  name: string;
-  items: string[];
-  palette: string[];
-  notes: string;
-};
-
-type ChatResponse = {
-  headline: string;
-  outfit_options: OutfitOption[];
-  accessories: string[];
-  beauty: string[];
-  why: string;
-  intent: "work" | "date" | "everyday" | "staples";
-  occasion: string | null;
-};
-
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  data?: ChatResponse;
-};
+type Msg = { id: string; role: "user" | "assistant"; content: string; remembered?: boolean };
 
 export default function AskPage() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [savingMessageId, setSavingMessageId] = useState<string | null>(null);
-  const [savedBoardName, setSavedBoardName] = useState<string | null>(null);
-  const [profile, setProfile] = useState<{
-    sun_sign: string | null;
-    moon_sign: string | null;
-    rising_sign: string | null;
-    mc_sign: string | null;
-  } | null>(null);
+  const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadUserAndBoards();
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) window.location.href = "/login";
+    })();
   }, []);
 
-  async function loadUserAndBoards() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    setUserId(user.id);
-
-    // Load boards will be done when modal opens
-
-    // Load profile for anchors
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("sun_sign, moon_sign, rising_sign, mc_sign")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (profileData) {
-      setProfile(profileData);
-    }
-  }
-
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function send() {
     const text = input.trim();
-    if (!text || !userId || isLoading) return;
-
-    // Clear error
+    if (!text || streaming) return;
     setError(null);
-
-    // Add user message
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: text,
-    };
-    setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    setIsLoading(true);
+
+    const userMsg: Msg = { id: crypto.randomUUID(), role: "user", content: text };
+    const assistantId = crypto.randomUUID();
+    setMessages((m) => [...m, userMsg, { id: assistantId, role: "assistant", content: "" }]);
+    setStreaming(true);
 
     try {
-      const res = await authedFetch("/api/nefeli/chat", {
+      const res = await authedFetch("/api/companion/chat", {
         method: "POST",
-        body: JSON.stringify({
-          message: text,
-        }),
+        body: JSON.stringify({ conversationId, message: text }),
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to get response");
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Something went wrong.");
       }
 
-      const responseJson = await res.json();
-      
-      if (!responseJson.ok || !responseJson.data) {
-        throw new Error(responseJson.error || "Invalid response format");
+      const convId = res.headers.get("X-Conversation-Id");
+      if (convId) setConversationId(convId);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        setMessages((m) =>
+          m.map((msg) => (msg.id === assistantId ? { ...msg, content: msg.content + chunk } : msg)),
+        );
       }
-
-      const responseData: ChatResponse = responseJson.data;
-
-      // Generate summary text for content
-      const summary = `${responseData.headline}. ${responseData.why}`;
-
-      // Add assistant message
-      const assistantMessage: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: summary,
-        data: responseData,
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err: any) {
-      setError(err.message || "Failed to get response");
-      // Add error message
-      const errorMessage: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: `Error: ${err.message || "Failed to get response"}`,
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Something went wrong.";
+      setError(message);
+      setMessages((m) => m.filter((msg) => msg.content !== "" || msg.role !== "assistant"));
     } finally {
-      setIsLoading(false);
+      setStreaming(false);
     }
   }
 
-  async function openSaveModal(messageId: string) {
-    if (!userId) {
-      window.location.href = "/login";
-      return;
+  async function remember(msg: Msg) {
+    try {
+      const res = await authedFetch("/api/companion/insights", {
+        method: "POST",
+        body: JSON.stringify({ content: msg.content, sourceConversationId: conversationId }),
+      });
+      if (res.ok) {
+        setMessages((m) => m.map((x) => (x.id === msg.id ? { ...x, remembered: true } : x)));
+      }
+    } catch {
+      /* non-fatal */
     }
-
-    setSavingMessageId(messageId);
-    setShowSaveModal(true);
   }
-
-  function getSavePayloadForMessage(messageId: string) {
-    const message = messages.find((m) => m.id === messageId);
-    if (!message?.data) return null;
-
-    const responseData = message.data;
-
-    // Title: use headline or fallback
-    const title = responseData.headline || "Outfit direction";
-
-    // Build items array from all outfit options
-    const items: string[] = [];
-    responseData.outfit_options.forEach((opt) => {
-      items.push(...opt.items);
-    });
-    // Add accessories and beauty items
-    items.push(...responseData.accessories);
-    items.push(...responseData.beauty);
-
-    // Anchors from profile
-    const anchors = profile
-      ? {
-          sun: profile.sun_sign,
-          moon: profile.moon_sign,
-          rising: profile.rising_sign,
-          mc: profile.mc_sign,
-        }
-      : {
-          sun: null,
-          moon: null,
-          rising: null,
-          mc: null,
-        };
-
-    // Return as outfit type payload
-    return {
-      title,
-      item_type: "outfit" as const,
-      item_json: {
-        title,
-      why: responseData.why,
-        items,
-        occasion: responseData.occasion || null,
-        created_from: "ask" as const,
-      } as OutfitItemJson,
-      intent: responseData.intent || "everyday",
-      anchors,
-    };
-  }
-
-  function handleSaveSuccess(boardName: string) {
-    setSavedBoardName(boardName);
-    setTimeout(() => {
-      setSavedBoardName(null);
-    }, 3000);
-    setSavingMessageId(null);
-  }
-
 
   return (
-    <div className="mx-auto max-w-2xl">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-neutral-50">Ask NEFELI</h1>
-        <p className="mt-2 text-sm text-neutral-400">
-          Get personalized style guidance based on your chart and goals.
+    <div className="mx-auto flex min-h-[70vh] max-w-2xl flex-col">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Talk with NEFELI</h1>
+        <p className="mt-1 text-sm text-neutral-400">
+          Anything that’s alive for you — I read it through your chart and remember what you share.
         </p>
       </div>
 
-      {/* Chat Messages */}
-      <div className="mb-6 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`rounded-2xl border border-neutral-800 bg-neutral-900/40 p-6 ${
-              message.role === "user" ? "ml-auto max-w-[80%]" : ""
-            }`}
-          >
-            {message.role === "user" ? (
-              <p className="text-sm text-neutral-200">{message.content}</p>
-            ) : (
-              <div className="space-y-4">
-                {message.data ? (
-                  <>
-                    <h2 className="text-xl font-semibold text-neutral-50">
-                      {message.data.headline}
-                    </h2>
-
-                    {/* Outfit Options */}
-                    <div className="space-y-3">
-                      {message.data.outfit_options.map((outfit, i) => (
-                        <div
-                          key={i}
-                          className="rounded-xl border border-neutral-800 bg-neutral-950/50 p-5"
-                        >
-                          <h4 className="text-base font-semibold text-neutral-50 mb-3">
-                            {outfit.name}
-                          </h4>
-                          <ul className="space-y-1.5 mb-3">
-                            {outfit.items.map((item, j) => (
-                              <li key={j} className="text-sm text-neutral-300">
-                                • {item}
-                              </li>
-                            ))}
-                          </ul>
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {outfit.palette.map((color, j) => (
-                              <span
-                                key={j}
-                                className="px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-900 border border-neutral-800 text-neutral-300"
-                              >
-                                {color}
-                              </span>
-                            ))}
-                          </div>
-                          {outfit.notes && (
-                            <p className="text-xs text-neutral-400 italic">{outfit.notes}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Accessories */}
-                    {message.data.accessories.length > 0 && (
-                      <div className="rounded-xl border border-neutral-800 bg-neutral-950/50 p-4">
-                        <h4 className="text-sm font-semibold text-neutral-50 mb-2">Accessories</h4>
-                        <ul className="space-y-1">
-                          {message.data.accessories.map((acc, i) => (
-                            <li key={i} className="text-sm text-neutral-300">
-                              • {acc}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Beauty */}
-                    {message.data.beauty.length > 0 && (
-                      <div className="rounded-xl border border-neutral-800 bg-neutral-950/50 p-4">
-                        <h4 className="text-sm font-semibold text-neutral-50 mb-2">
-                          Beauty & finishing touches
-                        </h4>
-                        <ul className="space-y-1">
-                          {message.data.beauty.map((item, i) => (
-                            <li key={i} className="text-sm text-neutral-300">
-                              • {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Why */}
-                    <div className="rounded-xl border border-neutral-800 bg-neutral-950/50 p-4">
-                      <p className="text-sm text-neutral-400">{message.data.why}</p>
-                    </div>
-
-                    {/* Save to Board - only show for latest structured output */}
-                    {(() => {
-                      const structuredMessages = messages.filter((m) => m.role === "assistant" && m.data);
-                      const latestStructured = structuredMessages[structuredMessages.length - 1];
-                      return message.id === latestStructured?.id;
-                    })() && (
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => openSaveModal(message.id)}
-                          className="rounded-xl border border-neutral-700 bg-transparent px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-900 hover:border-neutral-600"
-                        >
-                          Save to board
-                        </button>
-                        {savedBoardName && savingMessageId === message.id && (
-                          <p className="mt-2 text-xs text-neutral-400">
-                            Saved to {savedBoardName}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-sm text-neutral-300">{message.content}</p>
-                )}
+      <div className="flex-1 space-y-5">
+        {messages.length === 0 && (
+          <p className="text-sm text-neutral-500">
+            Start anywhere. “What is this heaviness I’m carrying?” · “What’s the sky asking of me today?”
+          </p>
+        )}
+        {messages.map((msg) => (
+          <div key={msg.id} className={msg.role === "user" ? "text-right" : ""}>
+            <div
+              className={[
+                "inline-block max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-[15px] leading-7",
+                msg.role === "user"
+                  ? "bg-neutral-50 text-neutral-950"
+                  : "border border-neutral-800 bg-neutral-900/50 text-neutral-200",
+              ].join(" ")}
+            >
+              {msg.content || (streaming ? "…" : "")}
+            </div>
+            {msg.role === "assistant" && msg.content && !streaming && (
+              <div className="mt-1">
+                <button
+                  type="button"
+                  onClick={() => remember(msg)}
+                  disabled={msg.remembered}
+                  className="text-xs text-neutral-500 underline-offset-4 hover:text-neutral-300 hover:underline disabled:no-underline disabled:text-neutral-600"
+                >
+                  {msg.remembered ? "✓ Remembered" : "Remember this"}
+                </button>
               </div>
             )}
           </div>
         ))}
+        <div ref={endRef} />
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="mb-4 rounded-xl border border-red-900/50 bg-red-950/20 p-4">
-          <p className="text-sm text-red-200">{error}</p>
-        </div>
-      )}
+      {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
 
-      {/* Quick Prompt Chips */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        {["Work meeting", "Job interview", "First date", "Everyday errands", "Closet staples"].map(
-          (prompt) => (
-            <button
-              key={prompt}
-              type="button"
-              onClick={() => setInput(prompt)}
-              className="rounded-full border border-neutral-800 bg-neutral-950/50 px-3 py-1.5 text-xs font-medium text-neutral-300 transition-colors hover:bg-neutral-900 hover:border-neutral-700"
-            >
-              {prompt}
-            </button>
-          )
-        )}
-      </div>
-
-      {/* Input Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="flex gap-2">
-          <input
-            type="text"
+      <div className="sticky bottom-0 mt-4 bg-neutral-950/80 py-3 backdrop-blur">
+        <div className="flex items-end gap-2">
+          <textarea
+            rows={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask NEFELI for style guidance..."
-            className="flex-1 rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none"
-            disabled={isLoading}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+            }}
+            placeholder="Tell me what’s here…"
+            className="flex-1 resize-none rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none"
           />
           <button
-            type="submit"
-            disabled={isLoading || !input.trim() || !userId}
-            className="rounded-xl bg-neutral-50 px-6 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            onClick={send}
+            disabled={streaming || !input.trim()}
+            className="rounded-xl bg-neutral-50 px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 disabled:opacity-50"
           >
-            {isLoading ? "Sending..." : "Send"}
+            {streaming ? "…" : "Send"}
           </button>
         </div>
-      </form>
-
-      {/* Save Modal */}
-      <SaveToBoardModal
-        isOpen={showSaveModal}
-        onClose={() => {
-          setShowSaveModal(false);
-          setSavingMessageId(null);
-        }}
-        userId={userId}
-        savePayload={savingMessageId ? getSavePayloadForMessage(savingMessageId) : null}
-        onSuccess={handleSaveSuccess}
-      />
+      </div>
     </div>
   );
 }
-

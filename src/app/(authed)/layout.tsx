@@ -7,10 +7,8 @@ import { supabase } from "@/lib/supabase/client";
 
 const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/app", label: "Today" },
-  { href: "/ask", label: "Ask" },
-  { href: "/profile", label: "Profile" },
-  { href: "/boards", label: "Boards" },
-  { href: "/capsule/saved", label: "Saved capsules" },
+  { href: "/ask", label: "Chat" },
+  { href: "/memory", label: "Memory" },
 ];
 
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {

@@ -57,20 +57,15 @@ export default function LoginClient() {
           });
           setLoading(false);
         } else {
-          // Check if user profile is complete
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("birth_date, style_intent")
+          // Onboarding is complete once a birth profile exists.
+          const { data: bp } = await supabase
+            .from("birth_profiles")
+            .select("id")
             .eq("user_id", user!.id)
+            .limit(1)
             .maybeSingle();
 
-          const profileComplete = !!profile?.birth_date && !!profile?.style_intent;
-
-          if (profileComplete) {
-            window.location.href = "/profile";
-          } else {
-            window.location.href = "/onboarding";
-          }
+          window.location.href = bp ? "/app" : "/onboarding";
         }
       }
     }

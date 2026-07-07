@@ -2,464 +2,286 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api";
 import LocationAutocomplete from "@/components/LocationAutocomplete";
 
-type Intent = "work" | "date" | "everyday" | "staples";
+const CATEGORIES: Array<[string, string]> = [
+  ["career", "Career & work"],
+  ["relationships", "Relationships"],
+  ["family", "Family"],
+  ["creative", "Creative practice"],
+  ["health", "Health & healing"],
+  ["spiritual", "Spiritual life"],
+  ["finances", "Money"],
+];
 
-type LocationResult = {
-  label: string;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  lat: number;
-  lng: number;
-};
+const TOTAL_STEPS = 4;
 
 export default function OnboardingPage() {
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
   const [step, setStep] = useState(1);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [welcome, setWelcome] = useState<string | null>(null);
 
-  // Step 1: Display name
-  const [displayName, setDisplayName] = useState("");
-
-  // Step 2: Birth details
+  // Step 1
+  const [name, setName] = useState("");
+  // Step 2
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("");
+  const [timeUnknown, setTimeUnknown] = useState(false);
   const [birthPlace, setBirthPlace] = useState("");
-  const [selectedLat, setSelectedLat] = useState<number | null>(null);
-  const [selectedLng, setSelectedLng] = useState<number | null>(null);
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [tz, setTz] = useState<string | null>(null);
-
-  // Step 3: Style intent
-  const [intent, setIntent] = useState<Intent>("everyday");
+  // Step 3
+  const [contexts, setContexts] = useState<Record<string, string>>({});
+  const [healingFocus, setHealingFocus] = useState("");
+  // Step 4
+  const [declaration, setDeclaration] = useState("");
 
   async function handleLocationSelect(item: { label: string; lat: number; lng: number }) {
     setBirthPlace(item.label);
-    setSelectedLat(item.lat);
-    setSelectedLng(item.lng);
-
-    // Fetch timezone from coordinates
+    setLat(item.lat);
+    setLng(item.lng);
     try {
       const res = await fetch("/api/geo/timezone", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lat: item.lat, lng: item.lng }),
       });
-
       const data = await res.json();
-      if (data.tz) {
-        setTz(data.tz);
-      } else {
-        setTz(null);
-      }
-    } catch (error) {
-      console.error("Timezone lookup error:", error);
+      setTz(data.tz ?? null);
+    } catch {
       setTz(null);
     }
   }
 
-  function nextStep() {
+  function next() {
     setError(null);
-
     if (step === 1) {
-      if (!displayName.trim()) {
-        setError("Please enter your display name.");
-        return;
-      }
-      setStep(2);
+      if (!name.trim()) return setError("Tell me what to call you.");
     } else if (step === 2) {
-      if (!birthDate) {
-        setError("Birth date is required.");
-        return;
-      }
-      // If birth_time is present AND (lat or lng is null)
-      if (birthTime && (selectedLat === null || selectedLng === null)) {
-        setError("Please select a location from the list so we can calculate your chart accurately.");
-        return;
-      }
-
-      // Do NOT allow free-text submission if dropdown wasn't selected
-      if (birthPlace.trim() && (selectedLat === null || selectedLng === null)) {
-        setError("Please select a location from the list so we can calculate your chart accurately.");
-        return;
-      }
-      setStep(3);
-    } else if (step === 3) {
-      setStep(4);
+      if (!birthDate) return setError("Your birth date is needed for your chart.");
+      if (lat === null || lng === null || !tz)
+        return setError("Please pick your birth place from the list so I can read your chart.");
     }
+    setStep((s) => Math.min(TOTAL_STEPS, s + 1));
+  }
+  function back() {
+    setError(null);
+    setStep((s) => Math.max(1, s - 1));
   }
 
-  function prevStep() {
-    if (step > 1) {
-      setStep(step - 1);
-      setError(null);
-    }
-  }
-
-  async function saveProfile() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setError("Authentication error. Please try logging in again.");
-      return;
-    }
+  async function finish() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return setError("Please log in again.");
 
     setSaving(true);
     setError(null);
-    setStatus(null);
 
-    // Validation: require birth_date
-    if (!birthDate) {
-      setError("Birth date is required.");
+    const lifeContexts = [
+      ...CATEGORIES
+        .filter(([key]) => contexts[key]?.trim())
+        .map(([key]) => ({ category: key, description: contexts[key].trim() })),
+      ...(healingFocus.trim()
+        ? [{ category: "health", title: "Healing focus", description: healingFocus.trim() }]
+        : []),
+    ];
+
+    try {
+      const res = await authedFetch("/api/companion/onboarding", {
+        method: "POST",
+        body: JSON.stringify({
+          name: name.trim(),
+          birthDate,
+          birthTime: timeUnknown ? null : (birthTime || null),
+          timeUnknown,
+          birthCity: birthPlace.trim(),
+          birthCountry: "",
+          latitude: lat,
+          longitude: lng,
+          timezone: tz,
+          lifeContexts,
+          declaration: declaration.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Something went wrong. Please try again.");
+        setSaving(false);
+        return;
+      }
+      setWelcome(data.welcome || "");
+    } catch (e) {
+      setError("Something went wrong. Please try again.");
       setSaving(false);
-      return;
     }
+  }
 
-    // Validation: if birth_time is present AND (lat or lng is null)
-    if (birthTime && (selectedLat === null || selectedLng === null)) {
-      setError("Please select a location from the list so we can calculate your chart accurately.");
-      setSaving(false);
-      return;
-    }
-
-    // Do NOT allow free-text submission if dropdown wasn't selected
-    // If birthPlace has text but no selection, prevent save
-    if (birthPlace.trim() && (selectedLat === null || selectedLng === null)) {
-      setError("Please select a location from the list so we can calculate your chart accurately.");
-      setSaving(false);
-      return;
-    }
-
-    const payload = {
-      user_id: user.id,
-      email: user.email,
-      display_name: displayName.trim(),
-      birth_date: birthDate,
-      birth_time: birthTime || null,
-      birth_place: birthPlace.trim() || null,
-      style_intent: intent,
-      lat: selectedLat,
-      lng: selectedLng,
-      tz: tz,
-    };
-
-    const { error: upsertError } = await supabase
-      .from("profiles")
-      .upsert(payload, { onConflict: "user_id" });
-
-    if (upsertError) {
-      setError(upsertError.message);
-      setSaving(false);
-      setStatus(null);
-      return;
-    }
-
-    // Success - redirect to profile
-    window.location.href = "/profile";
+  // ── Welcome reading (the Day-0 moment) ──
+  if (welcome !== null) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8">
+          <p className="text-xs uppercase tracking-[0.25em] text-neutral-500">Your welcome</p>
+          <div className="mt-4 space-y-4 text-[15px] leading-7 text-neutral-200">
+            {welcome.split(/\n\n+/).filter(Boolean).map((p, i) => (
+              <p key={i}>{p}</p>
+            ))}
+          </div>
+          <a
+            href="/app"
+            className="mt-8 inline-block rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
+          >
+            Enter NEFELI
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="mx-auto max-w-2xl">
-      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-neutral-50">
-          Complete your profile
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight text-neutral-50">Let’s begin</h1>
         <p className="mt-2 text-sm text-neutral-400">
-          This helps NEFELI tailor styling suggestions to you and your goals.
+          A few things so I can read the sky through your actual life — not a generic horoscope.
         </p>
       </div>
 
-      {/* Progress indicator */}
       <div className="mb-8">
         <div className="flex items-center gap-2">
-          {[1, 2, 3, 4].map((s) => (
-            <div
-              key={s}
-              className={`h-1.5 flex-1 rounded-full ${
-                s <= step ? "bg-neutral-50" : "bg-neutral-800"
-              }`}
-            />
+          {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((s) => (
+            <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= step ? "bg-neutral-50" : "bg-neutral-800"}`} />
           ))}
         </div>
-        <p className="mt-2 text-xs text-neutral-500">Step {step} of 4</p>
+        <p className="mt-2 text-xs text-neutral-500">Step {step} of {TOTAL_STEPS}</p>
       </div>
 
-      {/* Step 1: Display Name */}
-      {step === 1 && (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8">
-          <h2 className="text-xl font-semibold text-neutral-50">What should we call you?</h2>
-          <p className="mt-2 text-sm text-neutral-400">
-            This is how your name will appear in your profile.
-          </p>
-
-          <div className="mt-6">
-            <label htmlFor="displayName" className="block text-sm font-medium text-neutral-200">
-              Display name
-            </label>
+      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8">
+        {step === 1 && (
+          <>
+            <h2 className="text-xl font-semibold text-neutral-50">What should I call you?</h2>
             <input
-              id="displayName"
               type="text"
-              required
-              className="mt-2 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
-              placeholder="Your name"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
               autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              className="mt-6 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
             />
-          </div>
+          </>
+        )}
 
-          {error && (
-            <div className="mt-4 rounded-lg border border-red-800/50 bg-red-950/20 p-3 text-sm text-red-200">
-              {error}
-            </div>
-          )}
-
-          <div className="mt-8 flex justify-end">
-            <button
-              type="button"
-              onClick={nextStep}
-              disabled={!displayName.trim()}
-              className="rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-50 focus:ring-offset-2 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: Birth Details */}
-      {step === 2 && (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8">
-          <h2 className="text-xl font-semibold text-neutral-50">Birth details</h2>
-          <p className="mt-2 text-sm text-neutral-400">
-            We use your birth information to calculate your astrological chart placements—Sun,
-            Moon, Rising, and more—which inform your personalized styling guidance. The more
-            accurate your details, the more precise your chart and style recommendations.
-          </p>
-
-          <div className="mt-6 space-y-6">
-            <div>
-              <label htmlFor="birthDate" className="block text-sm font-medium text-neutral-200">
-                Birth date <span className="text-neutral-500">(required)</span>
-              </label>
-              <input
-                id="birthDate"
-                type="date"
-                required
-                className="mt-2 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-              />
-              <p className="mt-2 text-xs text-neutral-500">
-                Used to calculate your Sun and Moon signs.
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="birthTime" className="block text-sm font-medium text-neutral-200">
-                Birth time <span className="text-neutral-500">(optional)</span>
-              </label>
-              <input
-                id="birthTime"
-                type="time"
-                className="mt-2 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
-                value={birthTime}
-                onChange={(e) => setBirthTime(e.target.value)}
-              />
-              <p className="mt-2 text-xs text-neutral-500">
-                Helps calculate your Rising sign and Midheaven more accurately.
-              </p>
-            </div>
-
-            <div>
-              <LocationAutocomplete
-                label="Birth location"
-                value={birthPlace}
-                onChangeValue={(v, origin) => {
-                  setBirthPlace(v);
-                  if (origin === "typing") {
-                    setSelectedLat(null);
-                    setSelectedLng(null);
-                    setTz(null);
-                  }
-                }}
-                onSelect={handleLocationSelect}
-                placeholder="City, State / Country"
-                helpText="Choose a location from the list so we can calculate Rising and houses accurately."
-              />
-              {tz && (
-                <p className="mt-2 text-xs text-neutral-400">
-                  Timezone: {tz}
-              </p>
-              )}
-            </div>
-          </div>
-
-          {error && (
-            <div className="mt-6 rounded-lg border border-red-800/50 bg-red-950/20 p-3 text-sm text-red-200">
-              {error}
-            </div>
-          )}
-
-          <div className="mt-8 flex justify-between">
-            <button
-              type="button"
-              onClick={prevStep}
-              className="rounded-lg border border-neutral-800 bg-transparent px-6 py-2.5 text-sm font-semibold text-neutral-50 transition-colors hover:border-neutral-700 hover:bg-neutral-900/50 focus:outline-none focus:ring-2 focus:ring-neutral-800 focus:ring-offset-2 focus:ring-offset-neutral-900"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={nextStep}
-              disabled={!birthDate}
-              className="rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-50 focus:ring-offset-2 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Style Intent */}
-      {step === 3 && (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8">
-          <h2 className="text-xl font-semibold text-neutral-50">Style intent</h2>
-          <p className="mt-2 text-sm text-neutral-400">
-            What are you dressing for most often? This helps us prioritize which chart placements
-            to highlight in your styling guidance.
-          </p>
-
-          <div className="mt-6">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {([
-                ["work", "Work / business"],
-                ["date", "Dates / romance"],
-                ["everyday", "Everyday"],
-                ["staples", "Closet staples"],
-              ] as Array<[Intent, string]>).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setIntent(key)}
-                  className={`rounded-lg border px-4 py-3 text-left text-sm font-medium transition-colors ${
-                    intent === key
-                      ? "border-neutral-50 bg-neutral-50 text-neutral-950"
-                      : "border-neutral-800 bg-transparent text-neutral-100 hover:border-neutral-700 hover:bg-neutral-900/50"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {error && (
-            <div className="mt-6 rounded-lg border border-red-800/50 bg-red-950/20 p-3 text-sm text-red-200">
-              {error}
-            </div>
-          )}
-
-          <div className="mt-8 flex justify-between">
-            <button
-              type="button"
-              onClick={prevStep}
-              className="rounded-lg border border-neutral-800 bg-transparent px-6 py-2.5 text-sm font-semibold text-neutral-50 transition-colors hover:border-neutral-700 hover:bg-neutral-900/50 focus:outline-none focus:ring-2 focus:ring-neutral-800 focus:ring-offset-2 focus:ring-offset-neutral-900"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={nextStep}
-              className="rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-50 focus:ring-offset-2 focus:ring-offset-neutral-900"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 4: Confirmation */}
-      {step === 4 && (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8">
-          <h2 className="text-xl font-semibold text-neutral-50">Review your information</h2>
-          <p className="mt-2 text-sm text-neutral-400">
-            Please review your details before completing your profile.
-          </p>
-
-          <div className="mt-6 space-y-4 rounded-lg border border-neutral-800 bg-neutral-950/50 p-6">
-            <div>
-              <span className="text-xs font-medium text-neutral-500">Display name</span>
-              <p className="mt-1 text-sm text-neutral-50">{displayName}</p>
-            </div>
-            <div>
-              <span className="text-xs font-medium text-neutral-500">Birth date</span>
-              <p className="mt-1 text-sm text-neutral-50">{birthDate || "Not provided"}</p>
-            </div>
-            {birthTime && (
+        {step === 2 && (
+          <>
+            <h2 className="text-xl font-semibold text-neutral-50">Your birth details</h2>
+            <p className="mt-2 text-sm text-neutral-400">These place the planets exactly where they were for you.</p>
+            <div className="mt-6 space-y-6">
               <div>
-                <span className="text-xs font-medium text-neutral-500">Birth time</span>
-                <p className="mt-1 text-sm text-neutral-50">{birthTime}</p>
+                <label className="block text-sm font-medium text-neutral-200">Birth date</label>
+                <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)}
+                  className="mt-2 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700" />
               </div>
-            )}
-            {birthPlace && (
               <div>
-                <span className="text-xs font-medium text-neutral-500">Birth location</span>
-                <p className="mt-1 text-sm text-neutral-50">{birthPlace}</p>
+                <label className="block text-sm font-medium text-neutral-200">Birth time</label>
+                <input type="time" value={birthTime} disabled={timeUnknown}
+                  onChange={(e) => setBirthTime(e.target.value)}
+                  className="mt-2 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700 disabled:opacity-40" />
+                <label className="mt-2 flex items-center gap-2 text-xs text-neutral-400">
+                  <input type="checkbox" checked={timeUnknown} onChange={(e) => setTimeUnknown(e.target.checked)} />
+                  I don’t know my birth time
+                </label>
               </div>
-            )}
-            <div>
-              <span className="text-xs font-medium text-neutral-500">Style intent</span>
-              <p className="mt-1 text-sm text-neutral-50 capitalize">{intent}</p>
+              <div>
+                <LocationAutocomplete
+                  label="Birth place"
+                  value={birthPlace}
+                  onChangeValue={(v, origin) => {
+                    setBirthPlace(v);
+                    if (origin === "typing") { setLat(null); setLng(null); setTz(null); }
+                  }}
+                  onSelect={handleLocationSelect}
+                  placeholder="City, State / Country"
+                  helpText="Pick from the list so I can place your rising sign and houses."
+                />
+                {tz && <p className="mt-2 text-xs text-neutral-400">Timezone: {tz}</p>}
+              </div>
             </div>
-          </div>
+          </>
+        )}
 
-          <div className="mt-6 rounded-lg border border-neutral-800 bg-neutral-950/50 p-4">
-            <p className="text-xs font-medium text-neutral-200">Privacy note</p>
-            <p className="mt-2 text-xs leading-relaxed text-neutral-400">
-              You control your data. You can edit or delete your profile and birth information at
-              any time from your profile page. Your chart data is stored securely and only used to
-              provide your personalized styling guidance.
+        {step === 3 && (
+          <>
+            <h2 className="text-xl font-semibold text-neutral-50">What’s alive for you right now?</h2>
+            <p className="mt-2 text-sm text-neutral-400">
+              Share whatever’s present in any of these. I’ll remember it and read your transits through it.
             </p>
-          </div>
-
-          {status && (
-            <div className="mt-6 rounded-lg border border-neutral-800 bg-neutral-950/50 p-3 text-sm text-neutral-300">
-              {status}
+            <div className="mt-6 space-y-4">
+              {CATEGORIES.map(([key, label]) => (
+                <div key={key}>
+                  <label className="block text-xs font-medium text-neutral-400">{label}</label>
+                  <textarea
+                    rows={2}
+                    value={contexts[key] ?? ""}
+                    onChange={(e) => setContexts((c) => ({ ...c, [key]: e.target.value }))}
+                    placeholder="Optional — a sentence or two"
+                    className="mt-1 block w-full resize-none rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="block text-xs font-medium text-neutral-400">A healing focus (optional)</label>
+                <textarea
+                  rows={2}
+                  value={healingFocus}
+                  onChange={(e) => setHealingFocus(e.target.value)}
+                  placeholder="What are you tending to or working through?"
+                  className="mt-1 block w-full resize-none rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+                />
+              </div>
             </div>
-          )}
+          </>
+        )}
 
-          {error && (
-            <div className="mt-6 rounded-lg border border-red-800/50 bg-red-950/20 p-3 text-sm text-red-200">
-              {error}
-            </div>
-          )}
+        {step === 4 && (
+          <>
+            <h2 className="text-xl font-semibold text-neutral-50">Is there something you’re claiming?</h2>
+            <p className="mt-2 text-sm text-neutral-400">
+              An intention, a boundary, a truth you’re stepping into. Optional — I’ll hold it with you.
+            </p>
+            <textarea
+              rows={4}
+              value={declaration}
+              onChange={(e) => setDeclaration(e.target.value)}
+              placeholder="“I’m done shrinking to keep the peace.”"
+              className="mt-6 block w-full resize-none rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+            />
+          </>
+        )}
 
-          <div className="mt-8 flex justify-between">
-            <button
-              type="button"
-              onClick={prevStep}
-              className="rounded-lg border border-neutral-800 bg-transparent px-6 py-2.5 text-sm font-semibold text-neutral-50 transition-colors hover:border-neutral-700 hover:bg-neutral-900/50 focus:outline-none focus:ring-2 focus:ring-neutral-800 focus:ring-offset-2 focus:ring-offset-neutral-900"
-            >
-              Back
+        {error && (
+          <div className="mt-6 rounded-lg border border-red-800/50 bg-red-950/20 p-3 text-sm text-red-200">{error}</div>
+        )}
+
+        <div className="mt-8 flex justify-between">
+          <button type="button" onClick={back} disabled={step === 1}
+            className="rounded-lg border border-neutral-800 bg-transparent px-6 py-2.5 text-sm font-semibold text-neutral-50 transition-colors hover:border-neutral-700 hover:bg-neutral-900/50 disabled:opacity-40">
+            Back
+          </button>
+          {step < TOTAL_STEPS ? (
+            <button type="button" onClick={next}
+              className="rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100">
+              Continue
             </button>
-            <button
-              type="button"
-              onClick={saveProfile}
-              disabled={saving}
-              className="rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-50 focus:ring-offset-2 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? "Saving…" : "Complete setup"}
+          ) : (
+            <button type="button" onClick={finish} disabled={saving}
+              className="rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 disabled:opacity-50">
+              {saving ? "Reading your chart…" : "Meet NEFELI"}
             </button>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
-
