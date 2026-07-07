@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
 import type { Transit } from "@/lib/astrology/types";
+import { CopyButton } from "@/components/CopyButton";
 
 type Guidance = {
   date: string;
@@ -120,6 +121,9 @@ export default function TodayPage() {
 
       <div className="space-y-4 text-[15px] leading-7 text-neutral-200">
         {guidance.guidance.split(/\n\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
+      </div>
+      <div className="flex justify-end">
+        <CopyButton text={guidance.guidance} label="Copy today’s reading" />
       </div>
 
       <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5">

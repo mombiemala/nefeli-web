@@ -6,6 +6,7 @@ import { BirthChartSVG } from "@/components/astrology/BirthChartSVG";
 import { AspectGrid } from "@/components/astrology/AspectGrid";
 import { bigThree, elementBalance } from "@/lib/astrology/chart-utils";
 import type { NatalChart, PlanetPosition } from "@/lib/astrology/types";
+import { CopyButton } from "@/components/CopyButton";
 
 export default function ChartPage() {
   const [loading, setLoading] = useState(true);
@@ -103,9 +104,16 @@ export default function ChartPage() {
           {readingLoading ? (
             <p className="mt-3 text-sm text-neutral-500">Reading…</p>
           ) : (
-            <div className="mt-3 space-y-3 text-[15px] leading-7 text-neutral-200">
-              {(reading ?? "").split(/\n\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
-            </div>
+            <>
+              <div className="mt-3 space-y-3 text-[15px] leading-7 text-neutral-200">
+                {(reading ?? "").split(/\n\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
+              </div>
+              {reading && (
+                <div className="mt-3 flex justify-end">
+                  <CopyButton text={`${selected.name} in ${selected.sign}\n\n${reading}`} label="Copy reading" />
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
