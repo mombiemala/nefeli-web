@@ -20,68 +20,75 @@ export async function POST(req: Request) {
   const message = (body.message || "").trim();
   if (!message) return NextResponse.json({ error: "Message is required" }, { status: 400 });
 
-  const loaded = await loadCompanionContext(supabaseAdmin, uid);
-  if (!loaded) {
-    return NextResponse.json({ error: "Complete onboarding first." }, { status: 400 });
-  }
-
-  // Resolve (and authorize) the conversation, or start a new one.
-  let conversationId = body.conversationId || null;
-  if (conversationId) {
-    const { data: conv } = await supabaseAdmin
-      .from("conversations").select("id").eq("id", conversationId).eq("user_id", uid).maybeSingle();
-    if (!conv) conversationId = null;
-  }
-  if (!conversationId) {
-    const { data: conv, error } = await supabaseAdmin
-      .from("conversations")
-      .insert({ user_id: uid, title: message.slice(0, 60), conversation_type: "open_chat" })
-      .select("id").single();
-    if (error || !conv) {
-      return NextResponse.json({ error: "Could not start conversation" }, { status: 500 });
+  try {
+    const loaded = await loadCompanionContext(supabaseAdmin, uid);
+    if (!loaded) {
+      return NextResponse.json({ error: "Complete onboarding first." }, { status: 400 });
     }
-    conversationId = conv.id;
-  }
 
-  // History → messages for Claude.
-  const { data: prior } = await supabaseAdmin
-    .from("messages").select("role,content")
-    .eq("conversation_id", conversationId).order("created_at", { ascending: true });
-  const history: ChatMessage[] = (prior ?? []).map((m) => ({
-    role: m.role as "user" | "assistant", content: m.content,
-  }));
-
-  await supabaseAdmin.from("messages").insert({
-    conversation_id: conversationId, role: "user", content: message,
-  });
-
-  const source = await streamChat(loaded.ctx.system, [...history, { role: "user", content: message }]);
-
-  // Accumulate the assistant text as it streams; persist on flush.
-  const convId: string = conversationId!;
-  const decoder = new TextDecoder();
-  let acc = "";
-  const persist = new TransformStream<Uint8Array, Uint8Array>({
-    transform(chunk, controller) {
-      acc += decoder.decode(chunk, { stream: true });
-      controller.enqueue(chunk);
-    },
-    async flush() {
-      if (acc.trim()) {
-        await supabaseAdmin.from("messages").insert({
-          conversation_id: convId, role: "assistant", content: acc,
-        });
-        await supabaseAdmin.from("conversations")
-          .update({ updated_at: new Date().toISOString() }).eq("id", convId);
+    // Resolve (and authorize) the conversation, or start a new one.
+    let conversationId = body.conversationId || null;
+    if (conversationId) {
+      const { data: conv } = await supabaseAdmin
+        .from("conversations").select("id").eq("id", conversationId).eq("user_id", uid).maybeSingle();
+      if (!conv) conversationId = null;
+    }
+    if (!conversationId) {
+      const { data: conv, error } = await supabaseAdmin
+        .from("conversations")
+        .insert({ user_id: uid, title: message.slice(0, 60), conversation_type: "open_chat" })
+        .select("id").single();
+      if (error || !conv) {
+        return NextResponse.json({ error: "Could not start conversation" }, { status: 500 });
       }
-    },
-  });
+      conversationId = conv.id;
+    }
+    const convId: string = conversationId!;
 
-  return new Response(source.pipeThrough(persist), {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "X-Conversation-Id": convId,
-      "Cache-Control": "no-store",
-    },
-  });
+    // History → messages for Claude (before we add the new turn).
+    const { data: prior } = await supabaseAdmin
+      .from("messages").select("role,content")
+      .eq("conversation_id", convId).order("created_at", { ascending: true });
+    const history: ChatMessage[] = (prior ?? []).map((m) => ({
+      role: m.role as "user" | "assistant", content: m.content,
+    }));
+
+    // Start the stream first — if Claude fails to start, we return a clean error
+    // and never persist a dangling user turn.
+    const source = await streamChat(loaded.ctx.system, [...history, { role: "user", content: message }]);
+
+    await supabaseAdmin.from("messages").insert({
+      conversation_id: convId, role: "user", content: message,
+    });
+
+    // Accumulate the assistant text as it streams; persist on flush.
+    const decoder = new TextDecoder();
+    let acc = "";
+    const persist = new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        acc += decoder.decode(chunk, { stream: true });
+        controller.enqueue(chunk);
+      },
+      async flush() {
+        if (acc.trim()) {
+          await supabaseAdmin.from("messages").insert({
+            conversation_id: convId, role: "assistant", content: acc,
+          });
+          await supabaseAdmin.from("conversations")
+            .update({ updated_at: new Date().toISOString() }).eq("id", convId);
+        }
+      },
+    });
+
+    return new Response(source.pipeThrough(persist), {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "X-Conversation-Id": convId,
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch (e) {
+    console.error("companion chat error:", e);
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+  }
 }

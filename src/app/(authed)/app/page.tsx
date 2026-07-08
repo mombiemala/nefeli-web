@@ -46,16 +46,15 @@ export default function TodayPage() {
         if (!res.ok) throw new Error(data.error || "Could not load today.");
         setGuidance(data.guidance);
 
-        // A gentle heads-up: the soonest intense transit still on the horizon.
+        // The single strongest transit active today (the sky's loudest note).
         try {
           const tRes = await authedFetch("/api/companion/transits", { method: "GET" });
           const tData = await tRes.json();
           if (tRes.ok) {
-            const now = Date.now();
-            const upcoming = (tData.transits ?? [])
-              .filter((t: Transit) => +new Date(t.startDate) > now && t.intensity >= 4)
-              .sort((a: Transit, b: Transit) => +new Date(a.startDate) - +new Date(b.startDate));
-            setHorizon(upcoming[0] ?? null);
+            const strongest = (tData.transits ?? [])
+              .filter((t: Transit) => t.intensity >= 4)
+              .sort((a: Transit, b: Transit) => b.intensity - a.intensity);
+            setHorizon(strongest[0] ?? null);
           }
         } catch { /* non-fatal */ }
 
@@ -181,13 +180,13 @@ export default function TodayPage() {
         <p className="mt-2 text-[15px] leading-7 text-neutral-100">{guidance.prompt}</p>
       </div>
 
-      {horizon && (
+      {!nudge && horizon && (
         <div className="card-glow rounded-2xl border border-white/5 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">On the horizon</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Strongest today</p>
           <p className="mt-2 text-sm leading-6 text-neutral-300">
-            {horizon.glyph} {horizon.transitingPlanet} {horizon.aspect} {horizon.natalPlanet} is
-            forming around {new Date(horizon.exactDate).toLocaleDateString("en-US", { month: "long", day: "numeric" })}.
-            Nothing to brace for — just a window to move a little more gently with yourself.
+            {horizon.glyph} {horizon.transitingPlanet} {horizon.aspect} {horizon.natalPlanet} is the
+            loudest note in your sky right now. Nothing to brace for — just where the weather is
+            asking for a little more of your attention.
           </p>
         </div>
       )}
