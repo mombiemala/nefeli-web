@@ -227,7 +227,7 @@ function toPlanet(raw: any, name: string): PlanetPosition {
   };
 }
 
-function mapApiChart(data: any, timeUnknown: boolean): NatalChart {
+export function mapApiChart(data: any, timeUnknown: boolean): NatalChart {
   // Kerykeion nests the real payload under chart_data; fall back gracefully.
   const cd = data.chart_data ?? data.data ?? data;
   const subj = cd.subject ?? cd;
@@ -307,7 +307,7 @@ const ASPECT_INTENSITY: Record<AspectType, 1 | 2 | 3 | 4 | 5> = {
   conjunction: 5, opposition: 4, square: 4, trine: 3, sextile: 2,
 };
 
-function mapApiTransits(data: any, when: Date): Transit[] {
+export function mapApiTransits(data: any, when: Date): Transit[] {
   const cd = data.chart_data ?? data.data ?? data;
   const rawAspects: any[] = cd.aspects ?? data.aspects ?? data.transits ?? [];
   const iso = when.toISOString().slice(0, 10);
@@ -335,7 +335,7 @@ function mapApiTransits(data: any, when: Date): Transit[] {
   return out;
 }
 
-function mapApiMoonPhase(data: any, when: Date): MoonPhaseData {
+export function mapApiMoonPhase(data: any, when: Date): MoonPhaseData {
   const fallback = buildDemoMoonPhase(when);
   // The /moon-phase endpoint nests the details under moon_phase_overview.moon.
   const m = data.moon_phase_overview?.moon ?? data.moon ?? data;
@@ -350,7 +350,7 @@ function mapApiMoonPhase(data: any, when: Date): MoonPhaseData {
   };
 }
 
-function titlePlanet(n: string): string {
+export function titlePlanet(n: string): string {
   if (!n) return "";
   // "Mean_North_Lunar_Node" → "North Node"; "Sun" stays "Sun".
   const key = n.toLowerCase().replace(/[\s_-]+/g, "_");
@@ -361,7 +361,7 @@ function titlePlanet(n: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function houseNumber(h: any): number {
+export function houseNumber(h: any): number {
   if (typeof h === "number") return h;
   if (!h || typeof h !== "string") return 0;
   const map: Record<string, number> = {
@@ -377,12 +377,12 @@ const ASPECT_ALIASES: Record<string, AspectType> = {
 };
 
 /** Normalise the API aspect name to one of the five majors, or null. */
-function normaliseAspect(a: string): AspectType | null {
+export function normaliseAspect(a: string): AspectType | null {
   if (!a) return null;
   return ASPECT_ALIASES[a.toLowerCase()] ?? null;
 }
 
-function normaliseSign(s: string): ZodiacSign {
+export function normaliseSign(s: string): ZodiacSign {
   const map: Record<string, ZodiacSign> = {
     Ari: "Aries", Tau: "Taurus", Gem: "Gemini", Can: "Cancer", Leo: "Leo",
     Vir: "Virgo", Lib: "Libra", Sco: "Scorpio", Sag: "Sagittarius",
