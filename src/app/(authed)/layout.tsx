@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api";
 
 const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/app", label: "Today" },
@@ -18,6 +19,7 @@ const NAV_ITEMS: { href: string; label: string }[] = [
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -30,6 +32,25 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
       setLoading(false);
     })();
   }, []);
+
+  // Poll the unread-nudge count so the badge stays live as nudges arrive and
+  // as the user dismisses them on the Today page. Re-checks on every route
+  // change (cheap) and on a slow interval.
+  useEffect(() => {
+    if (loading) return;
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const res = await authedFetch("/api/companion/notifications", { method: "GET" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setUnread(data.unread ?? 0);
+      } catch { /* non-fatal */ }
+    };
+    refresh();
+    const id = setInterval(refresh, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [loading, pathname]);
 
   // Close the mobile menu whenever the route changes.
   useEffect(() => {
@@ -76,6 +97,11 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
             {NAV_ITEMS.map((item) => (
               <Link key={item.href} href={item.href} className={linkClass(item.href)}>
                 {item.label}
+                {item.href === "/app" && unread > 0 && (
+                  <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-neutral-950">
+                    {unread}
+                  </span>
+                )}
               </Link>
             ))}
             <button
@@ -127,6 +153,11 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
               {NAV_ITEMS.map((item) => (
                 <Link key={item.href} href={item.href} className={linkClass(item.href, true)}>
                   {item.label}
+                  {item.href === "/app" && unread > 0 && (
+                    <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-neutral-950">
+                      {unread}
+                    </span>
+                  )}
                 </Link>
               ))}
               <button
