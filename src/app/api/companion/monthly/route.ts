@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 import { loadCompanionContext } from "@/lib/companion/context";
 import { complete } from "@/lib/astrology/prompt";
-import { errorMessage } from "@/lib/errors";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -15,8 +14,11 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => ({}));
     const now = new Date();
-    const month = Number(body.month) || now.getUTCMonth() + 1; // 1-12
-    const year = Number(body.year) || now.getUTCFullYear();
+    const rawMonth = Number(body.month);
+    const rawYear = Number(body.year);
+    // Clamp to sane ranges so a bad month (0, 13, NaN) can't cache a garbage guide.
+    const month = rawMonth >= 1 && rawMonth <= 12 ? rawMonth : now.getUTCMonth() + 1;
+    const year = rawYear >= 1900 && rawYear <= 2200 ? rawYear : now.getUTCFullYear();
 
     const { data: cached } = await supabaseAdmin
       .from("monthly_guides").select("*")
@@ -80,6 +82,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, cached: false, guide: saved });
   } catch (e) {
     console.error("companion monthly error:", e);
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

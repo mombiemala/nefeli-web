@@ -39,11 +39,10 @@ export default function TodayPage() {
     (async () => {
       try {
         const res = await authedFetch("/api/companion/today", { method: "POST", body: "{}" });
-        if (res.status === 400) {
-          const d = await res.json().catch(() => ({}));
-          if (d.error === "onboarding_required") { window.location.href = "/onboarding"; return; }
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 400 && data.error === "onboarding_required") {
+          window.location.href = "/onboarding"; return;
         }
-        const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Could not load today.");
         setGuidance(data.guidance);
 

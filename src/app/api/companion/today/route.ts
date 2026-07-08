@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 import { loadCompanionContext } from "@/lib/companion/context";
 import { ensureDailyGuidance } from "@/lib/companion/daily";
-import { errorMessage } from "@/lib/errors";
 
 export async function POST(req: Request) {
   try {
@@ -18,6 +17,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, cached: !created, guidance: row });
   } catch (e) {
     console.error("companion today error:", e);
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

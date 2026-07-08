@@ -106,7 +106,10 @@ export default function TransitsPage() {
               </div>
               <p className="mt-2 text-sm leading-6 text-neutral-300">{t.meaning}</p>
               <div className="mt-2 flex items-center justify-between text-xs text-neutral-500">
-                <span>{t.house} house · exact {new Date(t.exactDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                <span>
+                  {t.house > 0 ? `${t.house} house · ` : ""}
+                  exact {new Date(t.exactDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </span>
                 <Link href="/ask" className="text-neutral-400 underline-offset-4 hover:text-neutral-200 hover:underline">
                   Explore in chat →
                 </Link>

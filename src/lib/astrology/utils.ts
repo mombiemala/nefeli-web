@@ -2,8 +2,14 @@
 // (Deliberately self-contained so the kit drops into any Next.js app.)
 
 /** Demo mode is forced by env flag regardless of keys. */
-function forcedDemo(): boolean {
+export function forcedDemo(): boolean {
   return process.env.LUMINARY_DEMO_MODE === "true" || process.env.NEFELI_ASTRO_DEMO === "true";
+}
+
+/** Real geocoding (OpenCage) runs once its key is set, independent of the
+ *  Claude/ephemeris keys — a valid OPENCAGE_API_KEY should never be ignored. */
+export function demoGeocoding(): boolean {
+  return forcedDemo() || !process.env.OPENCAGE_API_KEY;
 }
 
 /** True when EITHER capability is in demo (kept for compatibility). */

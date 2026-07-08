@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
-import { errorMessage } from "@/lib/errors";
 
 const CATEGORIES = ["career","relationships","family","creative","health","spiritual","finances","other"];
 
@@ -28,7 +27,8 @@ export async function GET(req: Request) {
       declarations: declarations.data ?? [],
     });
   } catch (e) {
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    console.error("API error:", e);
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }
 
@@ -62,7 +62,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ error: "Unknown kind" }, { status: 400 });
   } catch (e) {
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    console.error("API error:", e);
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }
 
@@ -86,6 +87,7 @@ export async function PATCH(req: Request) {
     }
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    console.error("API error:", e);
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

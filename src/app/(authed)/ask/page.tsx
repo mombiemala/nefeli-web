@@ -13,6 +13,7 @@ export default function AskPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -20,6 +21,9 @@ export default function AskPage() {
       if (!data.user) window.location.href = "/login";
     })();
   }, []);
+
+  // Abort any in-flight stream when leaving the page.
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -36,10 +40,13 @@ export default function AskPage() {
     setMessages((m) => [...m, userMsg, { id: assistantId, role: "assistant", content: "" }]);
     setStreaming(true);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const res = await authedFetch("/api/companion/chat", {
         method: "POST",
         body: JSON.stringify({ conversationId, message: text }),
+        signal: controller.signal,
       });
 
       if (!res.ok || !res.body) {
@@ -61,10 +68,12 @@ export default function AskPage() {
         );
       }
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return; // navigated away
       const message = e instanceof Error ? e.message : "Something went wrong.";
       setError(message);
       setMessages((m) => m.filter((msg) => msg.content !== "" || msg.role !== "assistant"));
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       setStreaming(false);
     }
   }
