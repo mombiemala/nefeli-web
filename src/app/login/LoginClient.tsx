@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import Link from "next/link";
+import { Wordmark } from "@/components/Wordmark";
 
 export default function LoginClient() {
   const searchParams = useSearchParams();
@@ -98,9 +99,10 @@ export default function LoginClient() {
   // Signup success state - "Check your email"
   if (mode === "signup" && emailSent) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-950 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
         <div className="w-full max-w-sm">
-          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8 shadow-xl">
+          <div className="mb-6 flex justify-center"><Wordmark href="/" /></div>
+          <div className="card-glow rounded-2xl border border-white/5 p-8">
             <div className="text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-950/20">
                 <svg
@@ -143,7 +145,7 @@ export default function LoginClient() {
               </button>
             </div>
 
-            <div className="mt-6 border-t border-neutral-800 pt-6">
+            <div className="mt-6 border-t border-white/5 pt-6">
               <p className="text-xs text-neutral-500">
                 We'll never sell your data. You can delete your account anytime.
               </p>
@@ -157,10 +159,11 @@ export default function LoginClient() {
   // Login Simple pattern - centered auth card
   if (mode === "login") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-950 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
         <div className="w-full max-w-sm">
+          <div className="mb-6 flex justify-center"><Wordmark href="/" /></div>
           {/* Auth Card */}
-          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8 shadow-xl">
+          <div className="card-glow rounded-2xl border border-white/5 p-8">
             <div className="text-center">
               <h2 className="text-2xl font-bold tracking-tight text-neutral-50">
                 Log in
@@ -178,7 +181,7 @@ export default function LoginClient() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="mt-2 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+                  className="mt-2 block w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -195,7 +198,7 @@ export default function LoginClient() {
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="mt-2 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+                  className="mt-2 block w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -228,7 +231,7 @@ export default function LoginClient() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-lg bg-neutral-50 px-4 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-50 focus:ring-offset-2 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full rounded-lg bg-neutral-50 px-4 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? "Logging in…" : "Log in"}
                 </button>
@@ -253,7 +256,7 @@ export default function LoginClient() {
               </p>
             </div>
 
-            <div className="mt-6 border-t border-neutral-800 pt-6">
+            <div className="mt-6 border-t border-white/5 pt-6">
               <p className="text-xs text-neutral-500">
                 We'll never sell your data. You can delete your account anytime.
               </p>
@@ -266,10 +269,11 @@ export default function LoginClient() {
 
   // Signup mode - Simple Sign Up pattern
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-950 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-sm">
+          <div className="mb-6 flex justify-center"><Wordmark href="/" /></div>
         {/* Auth Card */}
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8 shadow-xl">
+        <div className="card-glow rounded-2xl border border-white/5 p-8">
           <div className="text-center">
             <h2 className="text-2xl font-bold tracking-tight text-neutral-50">
               Create account
@@ -287,7 +291,7 @@ export default function LoginClient() {
                 type="email"
                 autoComplete="email"
                 required
-                className="mt-2 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+                className="mt-2 block w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -305,7 +309,7 @@ export default function LoginClient() {
                 autoComplete="new-password"
                 required
                 minLength={6}
-                className="mt-2 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+                className="mt-2 block w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -331,7 +335,7 @@ export default function LoginClient() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-lg bg-neutral-50 px-4 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-50 focus:ring-offset-2 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-lg bg-neutral-50 px-4 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Creating account…" : "Create account"}
               </button>
@@ -356,7 +360,7 @@ export default function LoginClient() {
             </p>
           </div>
 
-          <div className="mt-6 border-t border-neutral-800 pt-6">
+          <div className="mt-6 border-t border-white/5 pt-6">
             <p className="text-xs text-neutral-500">
               We'll never sell your data. You can delete your account anytime.
             </p>

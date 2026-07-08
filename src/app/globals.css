@@ -1,30 +1,82 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────
+   NEFELI — nocturnal, warm design tokens.
+   A near-black sky base with a whisper of indigo overhead and a
+   warm ember below; a single gold accent; real Geist type.
+   ───────────────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #08080b;
+  --foreground: #ededed;
+  --accent: #f4c77b;        /* warm gold — highlights, focus, key words */
+  --accent-strong: #eab55a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 html,
 body {
-  background: #0a0a0a;
+  background-color: var(--background);
 }
 
 body {
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+  /* The night sky: a barely-there indigo glow up top, a warm ember below. */
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, rgba(76, 66, 145, 0.18), transparent 60%),
+    radial-gradient(90% 60% at 85% 115%, rgba(180, 130, 70, 0.08), transparent 55%);
+  background-attachment: fixed;
+}
+
+/* Warm gold selection instead of browser blue. */
+::selection {
+  background: rgba(244, 199, 123, 0.25);
+  color: #fff;
+}
+
+/* One consistent, accessible keyboard-focus ring across the app. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid rgba(244, 199, 123, 0.55);
+  outline-offset: 2px;
+}
+
+@layer utilities {
+  /* A soft celestial panel — subtle gold-tinged glass. */
+  .card-glow {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+      rgba(23, 23, 23, 0.4);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+      0 20px 60px -30px rgba(0, 0, 0, 0.8);
+  }
+
+  /* Slow twinkle for accent flourishes. */
+  @keyframes nf-twinkle {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+  }
+  .animate-twinkle {
+    animation: nf-twinkle 4s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-twinkle { animation: none; }
+  }
 }

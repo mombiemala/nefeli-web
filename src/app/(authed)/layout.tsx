@@ -64,9 +64,9 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-950 text-neutral-50">
+      <main className="flex min-h-screen items-center justify-center text-neutral-50">
         <div className="flex items-center gap-3 text-neutral-400">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-700 border-t-neutral-200" />
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-800 border-t-neutral-200" />
           <span className="text-sm">Loading…</span>
         </div>
       </main>
@@ -80,16 +80,17 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
       block ? "block" : "",
       active
         ? "bg-neutral-50 text-neutral-950"
-        : "text-neutral-200 hover:bg-neutral-900 hover:text-neutral-50",
+        : "text-neutral-200 hover:bg-white/5 hover:text-neutral-50",
     ].join(" ");
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50">
-      <header className="border-b border-neutral-900">
+    <div className="min-h-screen text-neutral-50">
+      <header className="sticky top-0 z-20 border-b border-white/5 bg-[#08080b]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/app" className="text-sm font-semibold tracking-[0.25em] text-neutral-200">
-            NEFELI
+          <Link href="/app" className="inline-flex items-center gap-2" aria-label="NEFELI home">
+            <span className="text-accent animate-twinkle" aria-hidden>✦</span>
+            <span className="text-sm font-semibold tracking-[0.25em] text-neutral-200">NEFELI</span>
           </Link>
 
           {/* Desktop nav */}
@@ -107,7 +108,7 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
             <button
               type="button"
               onClick={logout}
-              className="rounded-xl border border-neutral-800 bg-transparent px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-900 hover:text-neutral-50"
+              className="rounded-xl border border-white/10 bg-transparent px-3 py-2 text-sm text-neutral-200 hover:bg-white/5 hover:text-neutral-50"
             >
               Log out
             </button>
@@ -119,7 +120,7 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
             aria-label="Toggle menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-800 text-neutral-200 hover:bg-neutral-900 md:hidden"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-neutral-200 hover:bg-white/5 md:hidden"
           >
             <svg
               width="18"
@@ -148,7 +149,7 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
 
         {/* Mobile nav drawer */}
         {menuOpen && (
-          <nav className="border-t border-neutral-900 px-6 py-3 md:hidden">
+          <nav className="border-t border-white/5 px-6 py-3 md:hidden">
             <div className="mx-auto flex max-w-5xl flex-col gap-1">
               {NAV_ITEMS.map((item) => (
                 <Link key={item.href} href={item.href} className={linkClass(item.href, true)}>
@@ -163,7 +164,7 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
               <button
                 type="button"
                 onClick={logout}
-                className="mt-1 rounded-xl border border-neutral-800 bg-transparent px-3 py-2 text-left text-sm text-neutral-200 hover:bg-neutral-900 hover:text-neutral-50"
+                className="mt-1 rounded-xl border border-white/10 bg-transparent px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/5 hover:text-neutral-50"
               >
                 Log out
               </button>

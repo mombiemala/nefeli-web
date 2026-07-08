@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,9 +13,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NEFELI - Dress with intention",
+  title: {
+    default: "NEFELI — your astrology companion",
+    template: "%s · NEFELI",
+  },
   description:
-    "NEFELI uses your birth chart placements to guide fashion and beauty choices—based on what you're stepping into.",
+    "A warm, emotionally intelligent astrology companion that reads the sky through your life — your healing, your work, your relationships — and remembers what you share.",
+  applicationName: "NEFELI",
+  openGraph: {
+    title: "NEFELI — your astrology companion",
+    description:
+      "An astrology companion that reads the sky through your life, remembers what you tell it, and meets you where you are — day after day.",
+    siteName: "NEFELI",
+    type: "website",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#08080b",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({
@@ -24,12 +40,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark-mode">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
