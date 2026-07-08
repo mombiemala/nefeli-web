@@ -129,7 +129,7 @@ export default function TodayPage() {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="mt-4 rounded-lg border border-neutral-800 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-900"
+            className="mt-4 rounded-lg border border-white/10 px-4 py-2 text-sm text-neutral-200 hover:bg-white/5"
           >
             Try again
           </button>
@@ -177,13 +177,13 @@ export default function TodayPage() {
         <CopyButton text={guidance.guidance} label="Copy today’s reading" />
       </div>
 
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5">
+      <div className="card-glow rounded-2xl border border-white/5 p-5">
         <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Sit with this</p>
         <p className="mt-2 text-[15px] leading-7 text-neutral-100">{guidance.prompt}</p>
       </div>
 
       {horizon && (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/20 p-4">
+        <div className="card-glow rounded-2xl border border-white/5 p-4">
           <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">On the horizon</p>
           <p className="mt-2 text-sm leading-6 text-neutral-300">
             {horizon.glyph} {horizon.transitingPlanet} {horizon.aspect} {horizon.natalPlanet} is
@@ -194,7 +194,7 @@ export default function TodayPage() {
       )}
 
       {/* The 60-second check-in */}
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5">
+      <div className="card-glow rounded-2xl border border-white/5 p-5">
         <p className="text-sm font-semibold text-neutral-50">How are you arriving today?</p>
         {checkinResponse ? (
           <div className="mt-3 space-y-3">
@@ -216,14 +216,14 @@ export default function TodayPage() {
               value={reflection}
               onChange={(e) => setReflection(e.target.value)}
               placeholder="A line about where you are — tired, hopeful, bracing for something…"
-              className="mt-3 block w-full resize-none rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+              className="mt-3 block w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
             />
             <div className="mt-3 flex justify-end">
               <button
                 type="button"
                 onClick={submitCheckin}
                 disabled={submitting || !reflection.trim()}
-                className="rounded-lg bg-neutral-50 px-5 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 disabled:opacity-50"
+                className="rounded-lg bg-neutral-50 px-5 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white disabled:opacity-50"
               >
                 {submitting ? "…" : "Share"}
               </button>

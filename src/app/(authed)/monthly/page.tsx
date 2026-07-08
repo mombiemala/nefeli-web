@@ -60,7 +60,7 @@ export default function MonthlyPage() {
       </div>
 
       {moon && (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4 text-sm text-neutral-300">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-neutral-300">
           <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Lunations</p>
           <p className="mt-2">🌑 New Moon {fmt(moon.nextNewMoon)} · 🌕 Full Moon {fmt(moon.nextFullMoon)}</p>
         </div>
@@ -71,14 +71,14 @@ export default function MonthlyPage() {
           <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">Major transits this month</h2>
           <div className="space-y-3">
             {guide.major_transits.map((t, i) => (
-              <div key={i} className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4">
+              <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-neutral-50">{t.glyph} {t.label}</p>
                   <span className="text-xs text-neutral-500">exact {fmt(t.exactDate)}</span>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-neutral-300">{t.meaning}</p>
                 {t.forYou && (
-                  <div className="mt-3 rounded-lg border border-neutral-800 bg-neutral-950/50 p-3">
+                  <div className="mt-3 rounded-lg border border-white/10 bg-black/30 p-3">
                     <p className="text-xs font-medium text-neutral-400">For you</p>
                     <p className="mt-1 text-sm leading-6 text-neutral-200">{t.forYou}</p>
                   </div>

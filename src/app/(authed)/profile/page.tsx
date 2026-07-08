@@ -53,19 +53,19 @@ export default function ProfilePage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Profile</h1>
 
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
         <label className="block text-sm font-medium text-neutral-200">Name</label>
         <div className="mt-2 flex gap-2">
           <input value={name} onChange={(e) => { setName(e.target.value); setSaved(false); }}
-            className="flex-1 rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2 text-sm text-neutral-50 focus:border-neutral-700 focus:outline-none" />
+            className="flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-50 focus:border-accent/50 focus:outline-none" />
           <button type="button" onClick={saveName} disabled={saving || !name.trim()}
-            className="rounded-lg bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-neutral-100 disabled:opacity-50">
+            className="rounded-lg bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-white disabled:opacity-50">
             {saving ? "…" : saved ? "Saved" : "Save"}
           </button>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5 text-sm text-neutral-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-sm text-neutral-300">
         <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Birth details</p>
         <dl className="mt-3 space-y-2">
           <div className="flex justify-between"><dt className="text-neutral-500">Date</dt><dd>{profile.birth_date}</dd></div>

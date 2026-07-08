@@ -122,7 +122,7 @@ export default function OnboardingPage() {
   if (welcome !== null) {
     return (
       <div className="mx-auto max-w-2xl">
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
           <p className="text-xs uppercase tracking-[0.25em] text-neutral-500">Your welcome</p>
           <div className="mt-4 space-y-4 text-[15px] leading-7 text-neutral-200">
             {welcome.split(/\n\n+/).filter(Boolean).map((p, i) => (
@@ -131,7 +131,7 @@ export default function OnboardingPage() {
           </div>
           <a
             href="/app"
-            className="mt-8 inline-block rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100"
+            className="mt-8 inline-block rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white"
           >
             Enter NEFELI
           </a>
@@ -158,7 +158,7 @@ export default function OnboardingPage() {
         <p className="mt-2 text-xs text-neutral-500">Step {step} of {TOTAL_STEPS}</p>
       </div>
 
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-8">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
         {step === 1 && (
           <>
             <h2 className="text-xl font-semibold text-neutral-50">What should I call you?</h2>
@@ -168,7 +168,7 @@ export default function OnboardingPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name"
-              className="mt-6 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+              className="mt-6 block w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
             />
           </>
         )}
@@ -181,13 +181,13 @@ export default function OnboardingPage() {
               <div>
                 <label className="block text-sm font-medium text-neutral-200">Birth date</label>
                 <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)}
-                  className="mt-2 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700" />
+                  className="mt-2 block w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-neutral-50 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-200">Birth time</label>
                 <input type="time" value={birthTime} disabled={timeUnknown}
                   onChange={(e) => setBirthTime(e.target.value)}
-                  className="mt-2 block w-full rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700 disabled:opacity-40" />
+                  className="mt-2 block w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-neutral-50 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40 disabled:opacity-40" />
                 <label className="mt-2 flex items-center gap-2 text-xs text-neutral-400">
                   <input type="checkbox" checked={timeUnknown} onChange={(e) => setTimeUnknown(e.target.checked)} />
                   I don’t know my birth time
@@ -226,7 +226,7 @@ export default function OnboardingPage() {
                     value={contexts[key] ?? ""}
                     onChange={(e) => setContexts((c) => ({ ...c, [key]: e.target.value }))}
                     placeholder="Optional — a sentence or two"
-                    className="mt-1 block w-full resize-none rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+                    className="mt-1 block w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
                   />
                 </div>
               ))}
@@ -237,7 +237,7 @@ export default function OnboardingPage() {
                   value={healingFocus}
                   onChange={(e) => setHealingFocus(e.target.value)}
                   placeholder="What are you tending to or working through?"
-                  className="mt-1 block w-full resize-none rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+                  className="mt-1 block w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
                 />
               </div>
             </div>
@@ -255,7 +255,7 @@ export default function OnboardingPage() {
               value={declaration}
               onChange={(e) => setDeclaration(e.target.value)}
               placeholder="“I’m done shrinking to keep the peace.”"
-              className="mt-6 block w-full resize-none rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+              className="mt-6 block w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
             />
           </>
         )}
@@ -266,17 +266,17 @@ export default function OnboardingPage() {
 
         <div className="mt-8 flex justify-between">
           <button type="button" onClick={back} disabled={step === 1}
-            className="rounded-lg border border-neutral-800 bg-transparent px-6 py-2.5 text-sm font-semibold text-neutral-50 transition-colors hover:border-neutral-700 hover:bg-neutral-900/50 disabled:opacity-40">
+            className="rounded-lg border border-white/10 bg-transparent px-6 py-2.5 text-sm font-semibold text-neutral-50 transition-colors hover:border-white/15 hover:bg-white/[0.03] disabled:opacity-40">
             Back
           </button>
           {step < TOTAL_STEPS ? (
             <button type="button" onClick={next}
-              className="rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100">
+              className="rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white">
               Continue
             </button>
           ) : (
             <button type="button" onClick={finish} disabled={saving}
-              className="rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 disabled:opacity-50">
+              className="rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white disabled:opacity-50">
               {saving ? "Reading your chart…" : "Meet NEFELI"}
             </button>
           )}

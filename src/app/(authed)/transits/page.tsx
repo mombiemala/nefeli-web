@@ -62,14 +62,14 @@ export default function TransitsPage() {
         {(["all", "active", "upcoming", "intense"] as Filter[]).map((f) => (
           <button key={f} type="button" onClick={() => setFilter(f)}
             className={`rounded-full px-3 py-1 font-medium transition-colors ${
-              filter === f ? "bg-neutral-50 text-neutral-950" : "border border-neutral-700 text-neutral-300 hover:bg-neutral-900"
+              filter === f ? "bg-neutral-50 text-neutral-950" : "border border-white/15 text-neutral-300 hover:bg-white/[0.04]"
             }`}>
             {f[0].toUpperCase() + f.slice(1)}
           </button>
         ))}
         <span className="ml-auto text-neutral-500">Sort</span>
         <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}
-          className="rounded-lg border border-neutral-800 bg-neutral-900 px-2 py-1 text-neutral-200 focus:outline-none">
+          className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-neutral-200 focus:outline-none">
           <option value="intensity">Intensity</option>
           <option value="date">Date</option>
           <option value="house">House</option>
@@ -81,7 +81,7 @@ export default function TransitsPage() {
       ) : (
         <div className="space-y-3">
           {shown.map((t, i) => (
-            <div key={i} className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4">
+            <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-neutral-50">
                   {t.glyph} {t.transitingPlanet} {t.aspect} {t.natalPlanet}
