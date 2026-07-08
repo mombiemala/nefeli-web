@@ -2,7 +2,7 @@
 // NEFELI persona: a warm, emotionally intelligent, safety-aware astrology companion.
 
 import Anthropic from "@anthropic-ai/sdk";
-import { isDemoMode, seededPick } from "./utils";
+import { demoClaude, seededPick } from "./utils";
 
 export const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5";
 
@@ -76,7 +76,7 @@ export async function streamChat(
 ): Promise<ReadableStream<Uint8Array>> {
   const encoder = new TextEncoder();
 
-  if (isDemoMode()) {
+  if (demoClaude()) {
     const text = demoReply(messages.at(-1)?.content ?? "", system);
     return new ReadableStream({
       async start(controller) {
@@ -111,7 +111,7 @@ export async function complete(
   userPrompt: string,
   maxTokens = 1500,
 ): Promise<string> {
-  if (isDemoMode()) return demoReply(userPrompt, system);
+  if (demoClaude()) return demoReply(userPrompt, system);
   const res = await anthropic().messages.create({
     model: CLAUDE_MODEL,
     max_tokens: maxTokens,

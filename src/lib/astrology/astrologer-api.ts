@@ -9,7 +9,7 @@ import {
   buildDemoTransitXml,
 } from "./demo-data";
 import type { MoonPhaseData, NatalChart, Transit } from "./types";
-import { isDemoMode } from "./utils";
+import { demoEphemeris } from "./utils";
 import { PLANET_GLYPHS, SIGN_GLYPHS } from "./constants";
 import type { PlanetPosition, ZodiacSign } from "./types";
 
@@ -65,7 +65,7 @@ function seedKey(s: BirthSubject) {
 export async function generateBirthChart(
   subject: BirthSubject,
 ): Promise<{ chart: NatalChart; svg?: string; raw: unknown }> {
-  if (isDemoMode()) {
+  if (demoEphemeris()) {
     const chart = buildDemoChart(seedKey(subject), subject.timeUnknown);
     return { chart, svg: undefined, raw: { demo: true } };
   }
@@ -89,7 +89,7 @@ export async function generateBirthChart(
 
 /** AI-optimized XML context — fed directly into the Claude system prompt. */
 export async function getBirthChartContext(subject: BirthSubject): Promise<string> {
-  if (isDemoMode()) {
+  if (demoEphemeris()) {
     const chart = buildDemoChart(seedKey(subject), subject.timeUnknown);
     return buildDemoChartXml(subject.name, chart);
   }
@@ -109,7 +109,7 @@ export async function getTransits(
   subject: BirthSubject,
   when: Date,
 ): Promise<Transit[]> {
-  if (isDemoMode()) {
+  if (demoEphemeris()) {
     const chart = buildDemoChart(seedKey(subject), subject.timeUnknown);
     return buildDemoTransits(chart, when);
   }
@@ -130,7 +130,7 @@ export async function getTransitContext(
   subject: BirthSubject,
   when: Date,
 ): Promise<string> {
-  if (isDemoMode()) {
+  if (demoEphemeris()) {
     const chart = buildDemoChart(seedKey(subject), subject.timeUnknown);
     return buildDemoTransitXml(buildDemoTransits(chart, when), when);
   }
@@ -150,7 +150,7 @@ export async function getTransitContext(
 // ── Moon phase ───────────────────────────────────────────────
 
 export async function getMoonPhase(when: Date): Promise<MoonPhaseData> {
-  if (isDemoMode()) return buildDemoMoonPhase(when);
+  if (demoEphemeris()) return buildDemoMoonPhase(when);
   const res = await fetch(`${BASE}/api/v5/moon-phase`, {
     method: "POST",
     headers: headers(),
