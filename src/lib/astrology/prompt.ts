@@ -4,7 +4,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { isDemoMode, seededPick } from "./utils";
 
-export const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
+export const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5";
 
 let client: Anthropic | null = null;
 function anthropic(): Anthropic {
