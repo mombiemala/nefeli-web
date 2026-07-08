@@ -21,11 +21,14 @@ const ENERGY: Record<string, { label: string; className: string }> = {
   rest: { label: "Rest", className: "bg-violet-950/40 text-violet-300 border-violet-900/50" },
 };
 
+type Nudge = { id: string; title: string; body: string };
+
 export default function TodayPage() {
   const [loading, setLoading] = useState(true);
   const [guidance, setGuidance] = useState<Guidance | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [horizon, setHorizon] = useState<Transit | null>(null);
+  const [nudge, setNudge] = useState<Nudge | null>(null);
 
   // Check-in
   const [reflection, setReflection] = useState("");
@@ -56,6 +59,18 @@ export default function TodayPage() {
             setHorizon(upcoming[0] ?? null);
           }
         } catch { /* non-fatal */ }
+
+        // A proactive nudge left by the daily cron, if there's an unread one.
+        try {
+          const nRes = await authedFetch("/api/companion/notifications", { method: "GET" });
+          const nData = await nRes.json();
+          if (nRes.ok) {
+            const unread = (nData.notifications ?? []).find(
+              (n: { read_at: string | null }) => !n.read_at,
+            );
+            if (unread) setNudge({ id: unread.id, title: unread.title, body: unread.body });
+          }
+        } catch { /* non-fatal */ }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not load today.");
       } finally {
@@ -63,6 +78,18 @@ export default function TodayPage() {
       }
     })();
   }, []);
+
+  async function dismissNudge() {
+    const n = nudge;
+    if (!n) return;
+    setNudge(null);
+    try {
+      await authedFetch("/api/companion/notifications", {
+        method: "PATCH",
+        body: JSON.stringify({ id: n.id }),
+      });
+    } catch { /* best-effort */ }
+  }
 
   async function submitCheckin() {
     const text = reflection.trim();
@@ -99,6 +126,13 @@ export default function TodayPage() {
       <div className="mx-auto max-w-2xl">
         <div className="rounded-2xl border border-red-900/50 bg-red-950/20 p-8 text-center">
           <p className="text-sm text-neutral-300">{error || "Nothing to show yet."}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-4 rounded-lg border border-neutral-800 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-900"
+          >
+            Try again
+          </button>
         </div>
       </div>
     );
@@ -108,6 +142,23 @@ export default function TodayPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      {nudge && (
+        <div className="rounded-2xl border border-amber-900/50 bg-amber-950/20 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-amber-300/80">{nudge.title}</p>
+            <button
+              type="button"
+              onClick={dismissNudge}
+              aria-label="Dismiss"
+              className="-mt-1 text-neutral-500 hover:text-neutral-300"
+            >
+              ✕
+            </button>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-neutral-200">{nudge.body}</p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Today</h1>
         <span className={`rounded-full border px-3 py-1 text-xs font-medium ${energy.className}`}>
