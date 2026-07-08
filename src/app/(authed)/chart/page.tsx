@@ -7,6 +7,7 @@ import { AspectGrid } from "@/components/astrology/AspectGrid";
 import { bigThree, elementBalance } from "@/lib/astrology/chart-utils";
 import type { NatalChart, PlanetPosition } from "@/lib/astrology/types";
 import { CopyButton } from "@/components/CopyButton";
+import { Skeleton, SkeletonLines } from "@/components/Skeleton";
 
 export default function ChartPage() {
   const [loading, setLoading] = useState(true);
@@ -52,7 +53,24 @@ export default function ChartPage() {
     }
   }
 
-  if (loading) return <div className="mx-auto max-w-3xl text-sm text-neutral-400">Drawing your chart…</div>;
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6">
+        <Skeleton className="h-7 w-40" />
+        <div className="flex gap-2">
+          <Skeleton className="h-7 w-24 rounded-full" />
+          <Skeleton className="h-7 w-24 rounded-full" />
+          <Skeleton className="h-7 w-24 rounded-full" />
+        </div>
+        <div className="card-glow rounded-2xl border border-white/5 p-4">
+          <Skeleton className="mx-auto aspect-square w-full max-w-sm rounded-full" />
+        </div>
+        <div className="card-glow rounded-2xl border border-white/5 p-5">
+          <SkeletonLines lines={3} />
+        </div>
+      </div>
+    );
+  }
   if (error || !chart) {
     return (
       <div className="mx-auto max-w-3xl rounded-2xl border border-red-900/50 bg-red-950/20 p-8 text-center text-sm text-neutral-300">
@@ -65,7 +83,7 @@ export default function ChartPage() {
   const { elements } = elementBalance(chart);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="animate-fade-up mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Your chart</h1>
         <p className="mt-1 text-sm text-neutral-400">Tap any placement for a reading of how it lives in your life.</p>

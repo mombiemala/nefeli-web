@@ -76,7 +76,61 @@ body {
     animation: nf-twinkle 4s ease-in-out infinite;
   }
 
+  /* Gentle entrance — content settles up into place. */
+  @keyframes nf-fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+  .animate-fade-up {
+    animation: nf-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Blinking caret for streaming text. */
+  @keyframes nf-caret {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  .streaming-caret::after {
+    content: "";
+    display: inline-block;
+    width: 0.5ch;
+    height: 1.05em;
+    margin-left: 1px;
+    vertical-align: -0.15em;
+    background: var(--accent);
+    border-radius: 1px;
+    animation: nf-caret 1s step-end infinite;
+  }
+
+  /* Skeleton shimmer for loading states. */
+  @keyframes nf-shimmer {
+    100% { transform: translateX(100%); }
+  }
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.06),
+      transparent
+    );
+    animation: nf-shimmer 1.6s ease-in-out infinite;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .animate-twinkle { animation: none; }
+    .animate-twinkle,
+    .animate-fade-up,
+    .streaming-caret::after,
+    .skeleton::after {
+      animation: none;
+    }
   }
 }

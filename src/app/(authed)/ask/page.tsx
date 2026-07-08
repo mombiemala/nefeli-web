@@ -114,17 +114,21 @@ export default function AskPage() {
             </div>
           </div>
         )}
-        {messages.map((msg) => (
-          <div key={msg.id} className={msg.role === "user" ? "text-right" : ""}>
+        {messages.map((msg, i) => {
+          const isStreamingMsg =
+            streaming && msg.role === "assistant" && i === messages.length - 1;
+          return (
+          <div key={msg.id} className={`animate-fade-up ${msg.role === "user" ? "text-right" : ""}`}>
             <div
               className={[
                 "inline-block max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-[15px] leading-7",
                 msg.role === "user"
                   ? "bg-neutral-50 text-neutral-950"
                   : "card-glow border border-white/5 text-neutral-200",
+                isStreamingMsg ? "streaming-caret" : "",
               ].join(" ")}
             >
-              {msg.content || (streaming ? "…" : "")}
+              {msg.content}
             </div>
             {msg.role === "assistant" && msg.content && !streaming && (
               <div className="mt-1">
@@ -139,7 +143,8 @@ export default function AskPage() {
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
         <div ref={endRef} />
       </div>
 

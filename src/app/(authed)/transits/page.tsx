@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { authedFetch } from "@/lib/api";
 import type { Transit } from "@/lib/astrology/types";
+import { Skeleton, SkeletonLines } from "@/components/Skeleton";
 
 type Filter = "all" | "active" | "upcoming" | "intense";
 type Sort = "intensity" | "date" | "house";
@@ -46,13 +47,24 @@ export default function TransitsPage() {
     return list;
   }, [transits, filter, sort]);
 
-  if (loading) return <div className="mx-auto max-w-2xl text-sm text-neutral-400">Reading the sky against your chart…</div>;
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-5">
+        <Skeleton className="h-7 w-32" />
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="card-glow rounded-2xl border border-white/5 p-5">
+            <SkeletonLines lines={2} />
+          </div>
+        ))}
+      </div>
+    );
+  }
   if (error) {
     return <div className="mx-auto max-w-2xl rounded-2xl border border-red-900/50 bg-red-950/20 p-8 text-center text-sm text-neutral-300">{error}</div>;
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
+    <div className="animate-fade-up mx-auto max-w-2xl space-y-5">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Transits</h1>
         <p className="mt-1 text-sm text-neutral-400">What the sky is activating in your chart right now.</p>

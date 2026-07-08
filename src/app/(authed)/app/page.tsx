@@ -141,7 +141,7 @@ export default function TodayPage() {
   const energy = ENERGY[guidance.energy_level] ?? ENERGY.medium;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="animate-fade-up mx-auto max-w-2xl space-y-6">
       {nudge && (
         <div className="rounded-2xl border border-amber-900/50 bg-amber-950/20 p-4">
           <div className="flex items-start justify-between gap-4">

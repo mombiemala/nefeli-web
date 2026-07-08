@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
 import { CopyButton } from "@/components/CopyButton";
+import { Skeleton, SkeletonLines } from "@/components/Skeleton";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -38,7 +39,20 @@ export default function MonthlyPage() {
     })();
   }, []);
 
-  if (loading) return <div className="mx-auto max-w-2xl text-sm text-neutral-400">Reading your month…</div>;
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-6">
+        <Skeleton className="h-7 w-48" />
+        <div className="card-glow rounded-2xl border border-white/5 p-5">
+          <SkeletonLines lines={4} />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="card-glow rounded-2xl border border-white/5 p-5"><SkeletonLines lines={2} /></div>
+          <div className="card-glow rounded-2xl border border-white/5 p-5"><SkeletonLines lines={2} /></div>
+        </div>
+      </div>
+    );
+  }
   if (error || !guide) {
     return <div className="mx-auto max-w-2xl rounded-2xl border border-red-900/50 bg-red-950/20 p-8 text-center text-sm text-neutral-300">{error || "No guide yet."}</div>;
   }
@@ -46,7 +60,7 @@ export default function MonthlyPage() {
   const moon = guide.moon_phases[0];
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="animate-fade-up mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-50">{MONTHS[guide.month - 1]} {guide.year}</h1>
         <p className="mt-1 text-sm text-neutral-400">Your month, read through your chart and your life.</p>
