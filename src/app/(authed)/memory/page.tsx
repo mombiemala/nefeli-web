@@ -100,7 +100,7 @@ export default function MemoryPage() {
         ) : (
           <div className="space-y-2">
             {patterns.map((p) => (
-              <div key={p.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              <div key={p.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
                 <div>
                   <p className="text-sm font-semibold text-neutral-100">{p.title}</p>
                   <p className="mt-1 text-sm leading-6 text-neutral-300">{p.content}</p>
@@ -117,7 +117,7 @@ export default function MemoryPage() {
         <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">You’re claiming</h2>
         <div className="space-y-2">
           {declarations.map((d) => (
-            <div key={d.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <div key={d.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
               <p className="text-[15px] leading-7 text-neutral-100">“{d.declaration}”</p>
               <button type="button" onClick={() => archive("declaration", d.id)} className="text-xs text-neutral-600 hover:text-neutral-300">archive</button>
             </div>
@@ -136,7 +136,7 @@ export default function MemoryPage() {
         <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">What’s alive in your life</h2>
         <div className="space-y-2">
           {contexts.map((c) => (
-            <div key={c.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <div key={c.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
               <div>
                 <p className="text-xs font-medium text-neutral-400">{CATEGORY_LABEL[c.category] ?? "Life"}</p>
                 <p className="mt-1 text-sm leading-6 text-neutral-200">{c.description}</p>
@@ -165,7 +165,7 @@ export default function MemoryPage() {
           <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">Things you asked me to remember</h2>
           <div className="space-y-2">
             {remembered.map((i) => (
-              <div key={i.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              <div key={i.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
                 <div>
                   <p className="text-sm leading-6 text-neutral-200">{i.content}</p>
                   <p className="mt-1 text-xs text-neutral-600">{new Date(i.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>

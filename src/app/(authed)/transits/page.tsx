@@ -93,7 +93,7 @@ export default function TransitsPage() {
       ) : (
         <div className="space-y-3">
           {shown.map((t, i) => (
-            <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-neutral-50">
                   {t.glyph} {t.transitingPlanet} {t.aspect} {t.natalPlanet}

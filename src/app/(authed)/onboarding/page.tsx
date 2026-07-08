@@ -122,8 +122,10 @@ export default function OnboardingPage() {
   if (welcome !== null) {
     return (
       <div className="mx-auto max-w-2xl">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
-          <p className="text-xs uppercase tracking-[0.25em] text-neutral-500">Your welcome</p>
+        <div className="card-glow animate-fade-up rounded-2xl border border-white/5 p-8">
+          <p className="text-xs uppercase tracking-[0.25em] text-accent/80">
+            <span className="animate-twinkle mr-1" aria-hidden>✦</span> Your welcome
+          </p>
           <div className="mt-4 space-y-4 text-[15px] leading-7 text-neutral-200">
             {welcome.split(/\n\n+/).filter(Boolean).map((p, i) => (
               <p key={i}>{p}</p>
@@ -152,13 +154,13 @@ export default function OnboardingPage() {
       <div className="mb-8">
         <div className="flex items-center gap-2">
           {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((s) => (
-            <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= step ? "bg-neutral-50" : "bg-neutral-800"}`} />
+            <div key={s} className={`h-1.5 flex-1 rounded-full transition-colors duration-500 ${s <= step ? "bg-accent" : "bg-white/10"}`} />
           ))}
         </div>
         <p className="mt-2 text-xs text-neutral-500">Step {step} of {TOTAL_STEPS}</p>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
+      <div key={step} className="card-glow animate-fade-up rounded-2xl border border-white/5 p-8">
         {step === 1 && (
           <>
             <h2 className="text-xl font-semibold text-neutral-50">What should I call you?</h2>
