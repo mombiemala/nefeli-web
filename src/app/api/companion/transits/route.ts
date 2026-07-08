@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 import { profileToSubject } from "@/lib/astrology/chart-utils";
 import { getTransits } from "@/lib/astrology/astrologer-api";
-import { errorMessage } from "@/lib/errors";
 
 // The user's current transits (activations of their natal chart).
 export async function GET(req: Request) {
@@ -26,6 +25,7 @@ export async function GET(req: Request) {
     const transits = await getTransits(subject, new Date());
     return NextResponse.json({ ok: true, transits });
   } catch (e) {
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    console.error("API error:", e);
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

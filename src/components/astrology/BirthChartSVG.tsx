@@ -157,6 +157,19 @@ export function BirthChartSVG({
             key={planet.name}
             className={onSelectPlanet ? "cursor-pointer" : ""}
             onClick={() => onSelectPlanet?.(planet)}
+            role={onSelectPlanet ? "button" : undefined}
+            tabIndex={onSelectPlanet ? 0 : undefined}
+            aria-label={onSelectPlanet ? `${planet.name} in ${planet.sign}` : undefined}
+            onKeyDown={
+              onSelectPlanet
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectPlanet(planet);
+                    }
+                  }
+                : undefined
+            }
           >
             <line
               x1={tick.x}

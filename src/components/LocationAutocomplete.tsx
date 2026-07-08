@@ -35,6 +35,8 @@ export default function LocationAutocomplete({
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Set right after a pick so the query change it causes doesn't re-open the list.
+  const justSelectedRef = useRef(false);
 
   // Sync query with value prop
   useEffect(() => {
@@ -45,6 +47,14 @@ export default function LocationAutocomplete({
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
+    }
+
+    // A selection just set `query` to the chosen label — don't search for it.
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      setResults([]);
+      setIsSearching(false);
+      return;
     }
 
     if (query.length >= 3 && !disabled) {
@@ -114,6 +124,7 @@ export default function LocationAutocomplete({
   }
 
   function handleResultSelect(result: LocationResult) {
+    justSelectedRef.current = true;
     // Call onSelect FIRST
     onSelect({
       label: result.label,

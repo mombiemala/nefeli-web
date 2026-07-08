@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 import { loadCompanionContext } from "@/lib/companion/context";
 import { complete } from "@/lib/astrology/prompt";
-import { errorMessage } from "@/lib/errors";
 
 // Pattern recognition: look across the whole chart + everything the user has
 // shared, and name ONE true pattern. Saved as an insight (type 'pattern').
@@ -40,6 +39,6 @@ Format exactly: a short title (3-6 words) on the first line, then a blank line, 
     return NextResponse.json({ ok: true, pattern: saved });
   } catch (e) {
     console.error("companion patterns error:", e);
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

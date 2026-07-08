@@ -181,7 +181,10 @@ function transitMoment(subject: BirthSubject, when: Date) {
     nation: subject.nation,
     latitude: subject.latitude,
     longitude: subject.longitude,
-    timezone: subject.timezone,
+    // The date parts above are read in UTC (getUTC*), so label the moment UTC
+    // too — otherwise the API treats e.g. 12:00 UTC as 12:00 in the subject's
+    // local zone and the fast bodies (Moon ~0.5°/hr) land degrees off.
+    timezone: "UTC",
     zodiac_type: "Tropic",
   };
 }
@@ -232,7 +235,10 @@ function mapApiChart(data: any, timeUnknown: boolean): NatalChart {
   const planets: PlanetPosition[] = [];
   for (const [key, name] of PLANET_FIELDS) {
     const raw = subj[key];
-    if (raw && typeof raw === "object") planets.push(toPlanet(raw, name));
+    // Skip duplicates: mean_* and true_* node fields both map to "North Node".
+    if (raw && typeof raw === "object" && !planets.some((p) => p.name === name)) {
+      planets.push(toPlanet(raw, name));
+    }
   }
 
   // Angles (Ascendant / Midheaven) come from the house cusps, not the bodies.

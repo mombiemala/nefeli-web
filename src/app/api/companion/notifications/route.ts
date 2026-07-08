@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
-import { errorMessage } from "@/lib/errors";
 
 // GET: recent notifications + unread count for the signed-in user.
 export async function GET(req: Request) {
@@ -21,7 +20,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, notifications, unread });
   } catch (e) {
     console.error("notifications GET error:", e);
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }
 
@@ -47,6 +46,6 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("notifications PATCH error:", e);
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

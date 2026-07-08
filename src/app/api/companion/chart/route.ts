@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 import { profileToSubject } from "@/lib/astrology/chart-utils";
 import { generateBirthChart } from "@/lib/astrology/astrologer-api";
-import { errorMessage } from "@/lib/errors";
 
 // Returns the user's cached natal chart (computed once at onboarding).
 export async function GET(req: Request) {
@@ -31,6 +30,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, chart, name: profile.name });
   } catch (e) {
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    console.error("API error:", e);
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

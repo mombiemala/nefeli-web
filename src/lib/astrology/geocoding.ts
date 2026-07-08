@@ -1,5 +1,5 @@
 import type { GeocodeResult } from "./types";
-import { isDemoMode } from "./utils";
+import { demoGeocoding } from "./utils";
 
 /**
  * Convert a birth city/country into coordinates + timezone.
@@ -12,7 +12,7 @@ export async function geocodeBirthPlace(
 ): Promise<GeocodeResult> {
   const query = [city, country].filter(Boolean).join(", ");
 
-  if (isDemoMode() || !process.env.OPENCAGE_API_KEY) {
+  if (demoGeocoding()) {
     return demoGeocode(city, country);
   }
 

@@ -4,7 +4,6 @@ import { loadCompanionContext } from "@/lib/companion/context";
 import { ensureDailyGuidance, dayKeyFor } from "@/lib/companion/daily";
 import { complete } from "@/lib/astrology/prompt";
 import { emailEnabled, sendEmail } from "@/lib/notify/email";
-import { errorMessage } from "@/lib/errors";
 
 // Daily cron: pre-warm each onboarded user's guidance and, when a notable
 // transit is forming, write a proactive "nudge" notification (and email it if
@@ -101,7 +100,7 @@ export async function GET(req: Request) {
     return await run();
   } catch (e) {
     console.error("cron/daily error:", e);
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }
 

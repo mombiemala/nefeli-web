@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
+import { SkeletonLines } from "@/components/Skeleton";
 
 type Insight = { id: string; insight_type: string; title: string; content: string; created_at: string };
 type LifeContext = { id: string; category: string; title: string; description: string };
 type Declaration = { id: string; declaration: string; context_note: string | null; declared_at: string };
+type Nudge = { id: string; title: string; body: string; read_at: string | null; created_at: string };
 
 const CATEGORIES: Array<[string, string]> = [
   ["career", "Career & work"], ["relationships", "Relationships"], ["family", "Family"],
@@ -19,6 +21,8 @@ export default function MemoryPage() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [contexts, setContexts] = useState<LifeContext[]>([]);
   const [declarations, setDeclarations] = useState<Declaration[]>([]);
+  const [nudges, setNudges] = useState<Nudge[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const [ctxCategory, setCtxCategory] = useState("other");
   const [ctxText, setCtxText] = useState("");
@@ -27,14 +31,26 @@ export default function MemoryPage() {
   const [patterning, setPatterning] = useState(false);
 
   async function load() {
-    const res = await authedFetch("/api/companion/memory", { method: "GET" });
-    const data = await res.json();
-    if (res.ok) {
+    setError(null);
+    try {
+      const [res, nRes] = await Promise.all([
+        authedFetch("/api/companion/memory", { method: "GET" }),
+        authedFetch("/api/companion/notifications", { method: "GET" }),
+      ]);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not load your memory.");
       setInsights(data.insights ?? []);
       setContexts(data.lifeContexts ?? []);
       setDeclarations(data.declarations ?? []);
+      try {
+        const nData = await nRes.json();
+        if (nRes.ok) setNudges(nData.notifications ?? []);
+      } catch { /* nudges are non-fatal */ }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load your memory.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
   useEffect(() => { load(); }, []);
 
@@ -72,13 +88,35 @@ export default function MemoryPage() {
     setPatterning(false);
   }
 
-  if (loading) return <div className="mx-auto max-w-2xl text-sm text-neutral-400">Gathering what I remember…</div>;
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-6">
+        <div className="skeleton h-7 w-56 rounded-md" />
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><SkeletonLines lines={2} /></div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><SkeletonLines lines={2} /></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="rounded-2xl border border-red-900/50 bg-red-950/20 p-8 text-center">
+          <p className="text-sm text-neutral-300">{error}</p>
+          <button type="button" onClick={() => { setLoading(true); load(); }}
+            className="mt-4 rounded-lg border border-white/10 px-4 py-2 text-sm text-neutral-200 hover:bg-white/5">
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const patterns = insights.filter((i) => i.insight_type === "pattern");
   const remembered = insights.filter((i) => i.insight_type !== "pattern");
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="animate-fade-up mx-auto max-w-2xl space-y-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-50">What I remember</h1>
         <p className="mt-1 text-sm text-neutral-400">Everything you’ve shared. I read the sky through all of it — and you can tend it here.</p>
@@ -111,6 +149,27 @@ export default function MemoryPage() {
           </div>
         )}
       </section>
+
+      {/* Nudges from the daily cron */}
+      {nudges.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">Nudges from the sky</h2>
+          <div className="space-y-2">
+            {nudges.map((n) => (
+              <div key={n.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
+                <div className="flex items-center gap-2">
+                  {!n.read_at && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-label="unread" />}
+                  <p className="text-sm font-semibold text-neutral-100">{n.title}</p>
+                  <span className="ml-auto shrink-0 text-xs text-neutral-600">
+                    {new Date(n.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-sm leading-6 text-neutral-300">{n.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Declarations */}
       <section>

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 import { loadCompanionContext } from "@/lib/companion/context";
 import { complete } from "@/lib/astrology/prompt";
-import { errorMessage } from "@/lib/errors";
 
 // The 60-second daily check-in: the user says how they're arriving, NEFELI
 // responds through their chart + memory, and the reflection is saved as an
@@ -41,6 +40,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, response });
   } catch (e) {
     console.error("companion checkin error:", e);
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

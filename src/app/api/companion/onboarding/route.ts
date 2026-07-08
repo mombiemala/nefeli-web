@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
-import { errorMessage } from "@/lib/errors";
 import { profileToSubject, type BirthProfileInput } from "@/lib/astrology/chart-utils";
 import { generateBirthChart, getBirthChartContext } from "@/lib/astrology/astrologer-api";
 import { assembleContext } from "@/lib/astrology/assemble-context";
@@ -11,6 +10,12 @@ interface LifeContextInput {
   title?: string;
   description: string;
 }
+
+// Must match the life_category enum in the companion_core migration.
+const LIFE_CATEGORIES = new Set([
+  "career", "relationships", "family", "creative",
+  "health", "spiritual", "finances", "other",
+]);
 
 export async function POST(req: Request) {
   try {
@@ -51,24 +56,29 @@ export async function POST(req: Request) {
       generateBirthChart(subject),
     ]);
 
-    // One default birth profile per user — replace any prior one.
-    await supabaseAdmin.from("birth_profiles").delete().eq("user_id", uid);
-    const { error: bpErr } = await supabaseAdmin.from("birth_profiles").insert({
-      user_id: uid,
-      name,
-      birth_date: birthDate,
-      birth_time: profileInput.birthTime,
-      time_unknown: profileInput.timeUnknown,
-      birth_city: birthCity,
-      birth_country: profileInput.birthCountry,
-      latitude,
-      longitude,
-      timezone,
-      chart_data: chartRes.chart,
-      chart_xml: chartXml,
-      is_default: true,
-    });
-    if (bpErr) throw new Error(`birth_profiles: ${bpErr.message}`);
+    // One default birth profile per user. Insert the new one FIRST, then remove
+    // any prior profiles — so a failed insert never leaves the user with none.
+    const { data: inserted, error: bpErr } = await supabaseAdmin
+      .from("birth_profiles").insert({
+        user_id: uid,
+        name,
+        birth_date: birthDate,
+        birth_time: profileInput.birthTime,
+        time_unknown: profileInput.timeUnknown,
+        birth_city: birthCity,
+        birth_country: profileInput.birthCountry,
+        latitude,
+        longitude,
+        timezone,
+        chart_data: chartRes.chart,
+        chart_xml: chartXml,
+        is_default: true,
+      })
+      .select("id").single();
+    if (bpErr || !inserted) throw new Error(`birth_profiles: ${bpErr?.message ?? "insert failed"}`);
+
+    await supabaseAdmin.from("birth_profiles")
+      .delete().eq("user_id", uid).neq("id", inserted.id);
 
     // Keep the account row's display name in sync (used across the app).
     await supabaseAdmin.from("profiles").upsert(
@@ -80,14 +90,18 @@ export async function POST(req: Request) {
     const contexts: LifeContextInput[] = Array.isArray(lifeContexts) ? lifeContexts : [];
     const cleanContexts = contexts
       .filter((c) => c && c.description && c.description.trim())
-      .map((c) => ({
-        user_id: uid,
-        category: c.category || "other",
-        title: (c.title || c.description).slice(0, 120),
-        description: c.description.trim(),
-      }));
+      .map((c) => {
+        const category = LIFE_CATEGORIES.has(c.category) ? c.category : "other";
+        return {
+          user_id: uid,
+          category,
+          title: (c.title || c.description).slice(0, 120),
+          description: c.description.trim(),
+        };
+      });
     if (cleanContexts.length) {
-      await supabaseAdmin.from("life_contexts").insert(cleanContexts);
+      const { error: lcErr } = await supabaseAdmin.from("life_contexts").insert(cleanContexts);
+      if (lcErr) console.error("onboarding life_contexts insert failed:", lcErr.message);
     }
     if (declaration && String(declaration).trim()) {
       await supabaseAdmin.from("declarations").insert({
@@ -121,6 +135,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, welcome });
   } catch (e) {
     console.error("companion onboarding error:", e);
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }
