@@ -1,12 +1,25 @@
 // Small dependency-free helpers used across the astrology kit.
 // (Deliberately self-contained so the kit drops into any Next.js app.)
 
-/** Return true when the app should run without external API keys. */
+/** Demo mode is forced by env flag regardless of keys. */
+function forcedDemo(): boolean {
+  return process.env.LUMINARY_DEMO_MODE === "true" || process.env.NEFELI_ASTRO_DEMO === "true";
+}
+
+/** True when EITHER capability is in demo (kept for compatibility). */
 export function isDemoMode(): boolean {
-  if (process.env.LUMINARY_DEMO_MODE === "true") return true;
-  if (process.env.NEFELI_ASTRO_DEMO === "true") return true;
-  // Auto-enable if the core keys are missing.
-  return !process.env.ANTHROPIC_API_KEY || !process.env.RAPIDAPI_KEY;
+  return forcedDemo() || !process.env.ANTHROPIC_API_KEY || !process.env.RAPIDAPI_KEY;
+}
+
+/** Claude readings run live once ANTHROPIC_API_KEY is set (independent of the
+ *  ephemeris key), so you can turn on real readings without the Astrologer API. */
+export function demoClaude(): boolean {
+  return forcedDemo() || !process.env.ANTHROPIC_API_KEY;
+}
+
+/** Real ephemeris (charts/transits/moon) runs once RAPIDAPI_KEY is set. */
+export function demoEphemeris(): boolean {
+  return forcedDemo() || !process.env.RAPIDAPI_KEY;
 }
 
 /** Format a Date as an ISO date (YYYY-MM-DD), no time component. */
