@@ -8,10 +8,12 @@ import {
   buildDemoChart, buildDemoChartXml, buildDemoMoonPhase, buildDemoTransits,
   buildDemoTransitXml,
 } from "./demo-data";
-import type { MoonPhaseData, NatalChart, Transit } from "./types";
+import type {
+  Aspect, AspectType, HouseCusp, MoonPhaseData, NatalChart, PlanetPosition,
+  Transit, ZodiacSign,
+} from "./types";
 import { demoEphemeris } from "./utils";
-import { PLANET_GLYPHS, SIGN_GLYPHS } from "./constants";
-import type { PlanetPosition, ZodiacSign } from "./types";
+import { ASPECT_GLYPHS, PLANET_GLYPHS, SIGN_GLYPHS } from "./constants";
 
 const BASE = "https://astrologer.p.rapidapi.com";
 
@@ -169,6 +171,7 @@ export async function getMoonPhase(when: Date): Promise<MoonPhaseData> {
 
 function transitMoment(subject: BirthSubject, when: Date) {
   return {
+    name: "Transit",
     year: when.getUTCFullYear(),
     month: when.getUTCMonth() + 1,
     day: when.getUTCDate(),
@@ -179,78 +182,198 @@ function transitMoment(subject: BirthSubject, when: Date) {
     latitude: subject.latitude,
     longitude: subject.longitude,
     timezone: subject.timezone,
+    zodiac_type: "Tropic",
+  };
+}
+
+// The Astrologer API (Kerykeion v5) returns planets as *named fields* on the
+// subject object (subject.sun, subject.moon, …), houses as first_house…
+// twelfth_house, and aspects under chart_data.aspects. See docs/ or a sample
+// birth-chart response for the exact shape.
+
+// API field key → the display name the rest of the app expects.
+const PLANET_FIELDS: [string, string][] = [
+  ["sun", "Sun"], ["moon", "Moon"], ["mercury", "Mercury"], ["venus", "Venus"],
+  ["mars", "Mars"], ["jupiter", "Jupiter"], ["saturn", "Saturn"],
+  ["uranus", "Uranus"], ["neptune", "Neptune"], ["pluto", "Pluto"],
+  ["chiron", "Chiron"], ["mean_north_lunar_node", "North Node"],
+  ["true_north_lunar_node", "North Node"], ["mean_south_lunar_node", "South Node"],
+  ["mean_lilith", "Lilith"],
+];
+
+const HOUSE_FIELDS: [string, number][] = [
+  ["first_house", 1], ["second_house", 2], ["third_house", 3],
+  ["fourth_house", 4], ["fifth_house", 5], ["sixth_house", 6],
+  ["seventh_house", 7], ["eighth_house", 8], ["ninth_house", 9],
+  ["tenth_house", 10], ["eleventh_house", 11], ["twelfth_house", 12],
+];
+
+/** Build a PlanetPosition from a raw named body on the subject. */
+function toPlanet(raw: any, name: string): PlanetPosition {
+  const sign = normaliseSign(raw.sign);
+  return {
+    name,
+    sign,
+    signGlyph: SIGN_GLYPHS[sign] ?? "",
+    glyph: PLANET_GLYPHS[name] ?? raw.emoji ?? "•",
+    degree: Number(raw.position ?? 0),
+    absoluteDegree: Number(raw.abs_pos ?? 0),
+    house: houseNumber(raw.house),
+    speed: Number(raw.speed ?? 0),
+    retrograde: Boolean(raw.retrograde),
   };
 }
 
 function mapApiChart(data: any, timeUnknown: boolean): NatalChart {
-  const subj = data.data ?? data.subject ?? data;
-  const bodies: any[] = subj.planets ?? subj.bodies ?? [];
-  const planets: PlanetPosition[] = bodies.map((b: any) => {
-    const sign = normaliseSign(b.sign ?? b.sign_name);
-    return {
-      name: titlePlanet(b.name),
-      sign,
-      signGlyph: SIGN_GLYPHS[sign] ?? "",
-      glyph: PLANET_GLYPHS[titlePlanet(b.name)] ?? "•",
-      degree: b.position ?? b.degree ?? 0,
-      absoluteDegree: b.abs_pos ?? b.absolute_degree ?? 0,
-      house: houseNumber(b.house),
-      speed: b.speed ?? 0,
-      retrograde: Boolean(b.retrograde),
-    };
-  });
-  const find = (n: string) => planets.find((p) => p.name === n)?.sign ?? "Aries";
+  // Kerykeion nests the real payload under chart_data; fall back gracefully.
+  const cd = data.chart_data ?? data.data ?? data;
+  const subj = cd.subject ?? cd;
+
+  const planets: PlanetPosition[] = [];
+  for (const [key, name] of PLANET_FIELDS) {
+    const raw = subj[key];
+    if (raw && typeof raw === "object") planets.push(toPlanet(raw, name));
+  }
+
+  // Angles (Ascendant / Midheaven) come from the house cusps, not the bodies.
+  const asc = subj.first_house ?? subj.ascendant;
+  const mc = subj.tenth_house ?? subj.medium_coeli;
+  if (asc?.sign) {
+    const sign = normaliseSign(asc.sign);
+    planets.push({
+      name: "Ascendant", sign, signGlyph: SIGN_GLYPHS[sign] ?? "",
+      glyph: PLANET_GLYPHS.Ascendant, degree: Number(asc.position ?? 0),
+      absoluteDegree: Number(asc.abs_pos ?? 0), house: 1, speed: 0, retrograde: false,
+    });
+  }
+  if (mc?.sign) {
+    const sign = normaliseSign(mc.sign);
+    planets.push({
+      name: "Midheaven", sign, signGlyph: SIGN_GLYPHS[sign] ?? "",
+      glyph: PLANET_GLYPHS.Midheaven, degree: Number(mc.position ?? 0),
+      absoluteDegree: Number(mc.abs_pos ?? 0), house: 10, speed: 0, retrograde: false,
+    });
+  }
+
+  const houses: HouseCusp[] = [];
+  for (const [key, num] of HOUSE_FIELDS) {
+    const raw = subj[key];
+    if (raw && typeof raw === "object" && raw.sign) {
+      const sign = normaliseSign(raw.sign);
+      houses.push({
+        house: num, sign,
+        degree: Number(raw.position ?? 0),
+        absoluteDegree: Number(raw.abs_pos ?? 0),
+      });
+    }
+  }
+
+  const rawAspects: any[] = cd.aspects ?? data.aspects ?? [];
+  const aspects: Aspect[] = [];
+  for (const a of rawAspects) {
+    const type = normaliseAspect(a.aspect ?? a.aspect_name);
+    if (!type) continue; // keep the five major aspects
+    aspects.push({
+      a: titlePlanet(a.p1_name),
+      b: titlePlanet(a.p2_name),
+      type,
+      glyph: ASPECT_GLYPHS[type] ?? "",
+      orb: Math.abs(Number(a.orbit ?? a.orb ?? 0)),
+      applying: /apply/i.test(String(a.aspect_movement ?? "")),
+    });
+  }
+
+  const signOf = (n: string): ZodiacSign =>
+    planets.find((p) => p.name === n)?.sign ?? "Aries";
   return {
     planets,
-    houses: [],
-    aspects: [],
-    ascendantSign: find("Ascendant"),
-    sunSign: find("Sun"),
-    moonSign: find("Moon"),
-    svg: data.chart,
+    houses,
+    aspects,
+    ascendantSign: signOf("Ascendant"),
+    sunSign: signOf("Sun"),
+    moonSign: signOf("Moon"),
+    svg: data.chart ?? cd.chart,
     timeUnknown,
   };
 }
 
+const ASPECT_INTENSITY: Record<AspectType, 1 | 2 | 3 | 4 | 5> = {
+  conjunction: 5, opposition: 4, square: 4, trine: 3, sextile: 2,
+};
+
 function mapApiTransits(data: any, when: Date): Transit[] {
-  const aspects: any[] = data.aspects ?? data.transits ?? [];
-  return aspects.map((a: any) => ({
-    transitingPlanet: titlePlanet(a.p1_name ?? a.transiting ?? ""),
-    aspect: (a.aspect ?? "conjunction").toLowerCase(),
-    natalPlanet: titlePlanet(a.p2_name ?? a.natal ?? ""),
-    glyph: "",
-    exactDate: when.toISOString().slice(0, 10),
-    startDate: when.toISOString().slice(0, 10),
-    endDate: when.toISOString().slice(0, 10),
-    house: houseNumber(a.house),
-    intensity: 3,
-    meaning: a.description ?? "",
-  }));
+  const cd = data.chart_data ?? data.data ?? data;
+  const rawAspects: any[] = cd.aspects ?? data.aspects ?? data.transits ?? [];
+  const iso = when.toISOString().slice(0, 10);
+  const out: Transit[] = [];
+  for (const a of rawAspects) {
+    const aspect = normaliseAspect(a.aspect ?? a.aspect_name);
+    if (!aspect) continue;
+    // p*_owner tells us which side is the moving (transit) body vs the natal one.
+    const p1IsTransit = /transit/i.test(String(a.p1_owner ?? ""));
+    const transiting = p1IsTransit ? a.p1_name : a.p2_name;
+    const natal = p1IsTransit ? a.p2_name : a.p1_name;
+    out.push({
+      transitingPlanet: titlePlanet(transiting),
+      aspect,
+      natalPlanet: titlePlanet(natal),
+      glyph: ASPECT_GLYPHS[aspect] ?? "",
+      exactDate: iso,
+      startDate: iso,
+      endDate: iso,
+      house: 0,
+      intensity: ASPECT_INTENSITY[aspect],
+      meaning: a.description ?? "",
+    });
+  }
+  return out;
 }
 
 function mapApiMoonPhase(data: any, when: Date): MoonPhaseData {
   const fallback = buildDemoMoonPhase(when);
+  // The /moon-phase endpoint nests the details under moon_phase_overview.moon.
+  const m = data.moon_phase_overview?.moon ?? data.moon ?? data;
+  const illum = m.illumination ?? m.illumination_percentage;
   return {
-    phaseName: data.moon_phase_name ?? data.phase_name ?? fallback.phaseName,
-    emoji: data.emoji ?? fallback.emoji,
-    illumination: data.illumination ?? fallback.illumination,
-    moonSign: normaliseSign(data.moon_sign) ?? fallback.moonSign,
+    phaseName: m.phase_name ?? m.moon_phase_name ?? fallback.phaseName,
+    emoji: m.emoji ?? m.moon_emoji ?? fallback.emoji,
+    illumination: typeof illum === "number"
+      ? (illum <= 1 ? Math.round(illum * 100) : Math.round(illum))
+      : fallback.illumination,
+    moonSign: m.moon_sign ? normaliseSign(m.moon_sign) : fallback.moonSign,
   };
 }
 
 function titlePlanet(n: string): string {
   if (!n) return "";
-  return n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
+  // "Mean_North_Lunar_Node" → "North Node"; "Sun" stays "Sun".
+  const key = n.toLowerCase().replace(/[\s_-]+/g, "_");
+  const hit = PLANET_FIELDS.find(([k]) => k === key);
+  if (hit) return hit[1];
+  return n
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function houseNumber(h: any): number {
   if (typeof h === "number") return h;
+  if (!h || typeof h !== "string") return 0;
   const map: Record<string, number> = {
-    First_House: 1, Second_House: 2, Third_House: 3, Fourth_House: 4,
-    Fifth_House: 5, Sixth_House: 6, Seventh_House: 7, Eighth_House: 8,
-    Ninth_House: 9, Tenth_House: 10, Eleventh_House: 11, Twelfth_House: 12,
+    first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6,
+    seventh: 7, eighth: 8, ninth: 9, tenth: 10, eleventh: 11, twelfth: 12,
   };
-  return map[h] ?? 1;
+  return map[h.toLowerCase().split("_")[0]] ?? 0;
+}
+
+const ASPECT_ALIASES: Record<string, AspectType> = {
+  conjunction: "conjunction", opposition: "opposition",
+  trine: "trine", square: "square", sextile: "sextile",
+};
+
+/** Normalise the API aspect name to one of the five majors, or null. */
+function normaliseAspect(a: string): AspectType | null {
+  if (!a) return null;
+  return ASPECT_ALIASES[a.toLowerCase()] ?? null;
 }
 
 function normaliseSign(s: string): ZodiacSign {
@@ -261,5 +384,6 @@ function normaliseSign(s: string): ZodiacSign {
   };
   if (!s) return "Aries";
   const key = s.slice(0, 3);
-  return map[key] ?? (s as ZodiacSign);
+  const norm = key.charAt(0).toUpperCase() + key.slice(1).toLowerCase();
+  return map[norm] ?? map[key] ?? (s as ZodiacSign);
 }

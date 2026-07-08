@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
 import { CopyButton } from "@/components/CopyButton";
+import { Skeleton, SkeletonLines } from "@/components/Skeleton";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -38,7 +39,20 @@ export default function MonthlyPage() {
     })();
   }, []);
 
-  if (loading) return <div className="mx-auto max-w-2xl text-sm text-neutral-400">Reading your month…</div>;
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-6">
+        <Skeleton className="h-7 w-48" />
+        <div className="card-glow rounded-2xl border border-white/5 p-5">
+          <SkeletonLines lines={4} />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="card-glow rounded-2xl border border-white/5 p-5"><SkeletonLines lines={2} /></div>
+          <div className="card-glow rounded-2xl border border-white/5 p-5"><SkeletonLines lines={2} /></div>
+        </div>
+      </div>
+    );
+  }
   if (error || !guide) {
     return <div className="mx-auto max-w-2xl rounded-2xl border border-red-900/50 bg-red-950/20 p-8 text-center text-sm text-neutral-300">{error || "No guide yet."}</div>;
   }
@@ -46,7 +60,7 @@ export default function MonthlyPage() {
   const moon = guide.moon_phases[0];
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="animate-fade-up mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-50">{MONTHS[guide.month - 1]} {guide.year}</h1>
         <p className="mt-1 text-sm text-neutral-400">Your month, read through your chart and your life.</p>
@@ -60,7 +74,7 @@ export default function MonthlyPage() {
       </div>
 
       {moon && (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4 text-sm text-neutral-300">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-neutral-300">
           <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Lunations</p>
           <p className="mt-2">🌑 New Moon {fmt(moon.nextNewMoon)} · 🌕 Full Moon {fmt(moon.nextFullMoon)}</p>
         </div>
@@ -71,14 +85,14 @@ export default function MonthlyPage() {
           <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">Major transits this month</h2>
           <div className="space-y-3">
             {guide.major_transits.map((t, i) => (
-              <div key={i} className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4">
+              <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-neutral-50">{t.glyph} {t.label}</p>
                   <span className="text-xs text-neutral-500">exact {fmt(t.exactDate)}</span>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-neutral-300">{t.meaning}</p>
                 {t.forYou && (
-                  <div className="mt-3 rounded-lg border border-neutral-800 bg-neutral-950/50 p-3">
+                  <div className="mt-3 rounded-lg border border-white/10 bg-black/30 p-3">
                     <p className="text-xs font-medium text-neutral-400">For you</p>
                     <p className="mt-1 text-sm leading-6 text-neutral-200">{t.forYou}</p>
                   </div>

@@ -2,7 +2,7 @@ export default function PrivacyPage() {
   const year = new Date().getFullYear();
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-6 py-14 text-neutral-50">
+    <main className="min-h-screen px-6 py-14 text-neutral-50">
       <div className="mx-auto max-w-3xl">
         <p className="text-xs tracking-[0.25em] text-neutral-400">NEFELI</p>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">Privacy</h1>
@@ -12,7 +12,7 @@ export default function PrivacyPage() {
         </p>
 
         <div className="mt-8 space-y-6">
-          <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-6">
+          <section className="card-glow rounded-2xl border border-white/5 p-6">
             <h2 className="text-lg font-semibold">What we store</h2>
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-neutral-300">
               <li><span className="text-neutral-100">Account info:</span> email (for login) and your chosen display name.</li>
@@ -22,7 +22,7 @@ export default function PrivacyPage() {
             </ul>
           </section>
 
-          <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-6">
+          <section className="card-glow rounded-2xl border border-white/5 p-6">
             <h2 className="text-lg font-semibold">What we don't do</h2>
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-neutral-300">
               <li>We don't sell your personal data.</li>
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
             </ul>
           </section>
 
-          <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-6">
+          <section className="card-glow rounded-2xl border border-white/5 p-6">
             <h2 className="text-lg font-semibold">Why we need birth time and location</h2>
             <p className="mt-3 text-sm text-neutral-300">
               Birth date is enough for some placements. Birth time and location improve accuracy for your
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-6">
+          <section className="card-glow rounded-2xl border border-white/5 p-6">
             <h2 className="text-lg font-semibold">Your controls</h2>
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-neutral-300">
               <li>You can edit your birth details anytime from your Profile.</li>
@@ -51,7 +51,7 @@ export default function PrivacyPage() {
             <div className="mt-4">
               <a
                 href="/profile"
-                className="inline-flex items-center rounded-2xl border border-neutral-700 px-4 py-2 text-sm text-neutral-100 hover:bg-neutral-900"
+                className="inline-flex items-center rounded-2xl border border-white/15 px-4 py-2 text-sm text-neutral-100 hover:bg-white/5"
               >
                 Go to Profile
               </a>

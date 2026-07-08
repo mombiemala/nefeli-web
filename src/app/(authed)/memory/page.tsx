@@ -100,7 +100,7 @@ export default function MemoryPage() {
         ) : (
           <div className="space-y-2">
             {patterns.map((p) => (
-              <div key={p.id} className="flex items-start justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+              <div key={p.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
                 <div>
                   <p className="text-sm font-semibold text-neutral-100">{p.title}</p>
                   <p className="mt-1 text-sm leading-6 text-neutral-300">{p.content}</p>
@@ -117,7 +117,7 @@ export default function MemoryPage() {
         <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">You’re claiming</h2>
         <div className="space-y-2">
           {declarations.map((d) => (
-            <div key={d.id} className="flex items-start justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+            <div key={d.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
               <p className="text-[15px] leading-7 text-neutral-100">“{d.declaration}”</p>
               <button type="button" onClick={() => archive("declaration", d.id)} className="text-xs text-neutral-600 hover:text-neutral-300">archive</button>
             </div>
@@ -125,9 +125,9 @@ export default function MemoryPage() {
         </div>
         <div className="mt-2 flex gap-2">
           <input value={newDecl} onChange={(e) => setNewDecl(e.target.value)} placeholder="Something you’re claiming…"
-            className="flex-1 rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none" />
+            className="flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" />
           <button type="button" onClick={addDeclaration} disabled={busy || !newDecl.trim()}
-            className="rounded-lg bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-neutral-100 disabled:opacity-50">Add</button>
+            className="rounded-lg bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-white disabled:opacity-50">Add</button>
         </div>
       </section>
 
@@ -136,7 +136,7 @@ export default function MemoryPage() {
         <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">What’s alive in your life</h2>
         <div className="space-y-2">
           {contexts.map((c) => (
-            <div key={c.id} className="flex items-start justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+            <div key={c.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
               <div>
                 <p className="text-xs font-medium text-neutral-400">{CATEGORY_LABEL[c.category] ?? "Life"}</p>
                 <p className="mt-1 text-sm leading-6 text-neutral-200">{c.description}</p>
@@ -148,13 +148,13 @@ export default function MemoryPage() {
         <div className="mt-2 space-y-2">
           <div className="flex gap-2">
             <select value={ctxCategory} onChange={(e) => setCtxCategory(e.target.value)}
-              className="rounded-lg border border-neutral-800 bg-neutral-900 px-2 py-2 text-sm text-neutral-200 focus:outline-none">
+              className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-2 text-sm text-neutral-200 focus:outline-none">
               {CATEGORIES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
             </select>
             <input value={ctxText} onChange={(e) => setCtxText(e.target.value)} placeholder="What’s present for you…"
-              className="flex-1 rounded-lg border border-neutral-800 bg-neutral-950/50 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none" />
+              className="flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none" />
             <button type="button" onClick={addContext} disabled={busy || !ctxText.trim()}
-              className="rounded-lg bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-neutral-100 disabled:opacity-50">Add</button>
+              className="rounded-lg bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-white disabled:opacity-50">Add</button>
           </div>
         </div>
       </section>
@@ -165,7 +165,7 @@ export default function MemoryPage() {
           <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">Things you asked me to remember</h2>
           <div className="space-y-2">
             {remembered.map((i) => (
-              <div key={i.id} className="flex items-start justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+              <div key={i.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
                 <div>
                   <p className="text-sm leading-6 text-neutral-200">{i.content}</p>
                   <p className="mt-1 text-xs text-neutral-600">{new Date(i.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>

@@ -94,21 +94,41 @@ export default function AskPage() {
 
       <div className="flex-1 space-y-5">
         {messages.length === 0 && (
-          <p className="text-sm text-neutral-500">
-            Start anywhere. “What is this heaviness I’m carrying?” · “What’s the sky asking of me today?”
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-neutral-500">Start anywhere.</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                "What is this heaviness I’m carrying?",
+                "What’s the sky asking of me today?",
+                "Help me understand a pattern I keep repeating.",
+              ].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setInput(s)}
+                  className="rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-neutral-300 transition-colors hover:border-accent/40 hover:text-neutral-100"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
-        {messages.map((msg) => (
-          <div key={msg.id} className={msg.role === "user" ? "text-right" : ""}>
+        {messages.map((msg, i) => {
+          const isStreamingMsg =
+            streaming && msg.role === "assistant" && i === messages.length - 1;
+          return (
+          <div key={msg.id} className={`animate-fade-up ${msg.role === "user" ? "text-right" : ""}`}>
             <div
               className={[
                 "inline-block max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-[15px] leading-7",
                 msg.role === "user"
                   ? "bg-neutral-50 text-neutral-950"
-                  : "border border-neutral-800 bg-neutral-900/50 text-neutral-200",
+                  : "card-glow border border-white/5 text-neutral-200",
+                isStreamingMsg ? "streaming-caret" : "",
               ].join(" ")}
             >
-              {msg.content || (streaming ? "…" : "")}
+              {msg.content}
             </div>
             {msg.role === "assistant" && msg.content && !streaming && (
               <div className="mt-1">
@@ -123,13 +143,14 @@ export default function AskPage() {
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
         <div ref={endRef} />
       </div>
 
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
 
-      <div className="sticky bottom-0 mt-4 bg-neutral-950/80 py-3 backdrop-blur">
+      <div className="sticky bottom-0 mt-4 bg-[#08080b]/85 py-3 backdrop-blur">
         <div className="flex items-end gap-2">
           <textarea
             rows={1}
@@ -139,13 +160,13 @@ export default function AskPage() {
               if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
             }}
             placeholder="Tell me what’s here…"
-            className="flex-1 resize-none rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-neutral-700 focus:outline-none"
+            className="flex-1 resize-none rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
           />
           <button
             type="button"
             onClick={send}
             disabled={streaming || !input.trim()}
-            className="rounded-xl bg-neutral-50 px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-neutral-100 disabled:opacity-50"
+            className="rounded-xl bg-neutral-50 px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white disabled:opacity-50"
           >
             {streaming ? "…" : "Send"}
           </button>

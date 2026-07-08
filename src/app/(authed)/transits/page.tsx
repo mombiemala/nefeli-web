@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { authedFetch } from "@/lib/api";
 import type { Transit } from "@/lib/astrology/types";
+import { Skeleton, SkeletonLines } from "@/components/Skeleton";
 
 type Filter = "all" | "active" | "upcoming" | "intense";
 type Sort = "intensity" | "date" | "house";
@@ -46,13 +47,24 @@ export default function TransitsPage() {
     return list;
   }, [transits, filter, sort]);
 
-  if (loading) return <div className="mx-auto max-w-2xl text-sm text-neutral-400">Reading the sky against your chart…</div>;
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-5">
+        <Skeleton className="h-7 w-32" />
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="card-glow rounded-2xl border border-white/5 p-5">
+            <SkeletonLines lines={2} />
+          </div>
+        ))}
+      </div>
+    );
+  }
   if (error) {
     return <div className="mx-auto max-w-2xl rounded-2xl border border-red-900/50 bg-red-950/20 p-8 text-center text-sm text-neutral-300">{error}</div>;
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
+    <div className="animate-fade-up mx-auto max-w-2xl space-y-5">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Transits</h1>
         <p className="mt-1 text-sm text-neutral-400">What the sky is activating in your chart right now.</p>
@@ -62,14 +74,14 @@ export default function TransitsPage() {
         {(["all", "active", "upcoming", "intense"] as Filter[]).map((f) => (
           <button key={f} type="button" onClick={() => setFilter(f)}
             className={`rounded-full px-3 py-1 font-medium transition-colors ${
-              filter === f ? "bg-neutral-50 text-neutral-950" : "border border-neutral-700 text-neutral-300 hover:bg-neutral-900"
+              filter === f ? "bg-neutral-50 text-neutral-950" : "border border-white/15 text-neutral-300 hover:bg-white/[0.04]"
             }`}>
             {f[0].toUpperCase() + f.slice(1)}
           </button>
         ))}
         <span className="ml-auto text-neutral-500">Sort</span>
         <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}
-          className="rounded-lg border border-neutral-800 bg-neutral-900 px-2 py-1 text-neutral-200 focus:outline-none">
+          className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-neutral-200 focus:outline-none">
           <option value="intensity">Intensity</option>
           <option value="date">Date</option>
           <option value="house">House</option>
@@ -81,7 +93,7 @@ export default function TransitsPage() {
       ) : (
         <div className="space-y-3">
           {shown.map((t, i) => (
-            <div key={i} className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4">
+            <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-neutral-50">
                   {t.glyph} {t.transitingPlanet} {t.aspect} {t.natalPlanet}

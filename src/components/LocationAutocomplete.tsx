@@ -135,7 +135,7 @@ export default function LocationAutocomplete({
         id="locationInput"
         type="text"
         disabled={disabled}
-        className="mt-2 block w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="mt-2 block w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-500 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed"
         placeholder={placeholder}
         value={query}
         onChange={handleInputChange}
@@ -146,13 +146,13 @@ export default function LocationAutocomplete({
         </div>
       )}
       {results.length > 0 && (
-        <div className="absolute z-10 mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-950 shadow-lg">
+        <div className="absolute z-10 mt-1 w-full rounded-xl border border-white/10 bg-[#0e0e12] shadow-xl shadow-black/50">
           {results.map((result, index) => (
             <button
               key={index}
               type="button"
               onClick={() => handleResultSelect(result)}
-              className="w-full px-3 py-2 text-left text-sm text-neutral-200 hover:bg-neutral-800 first:rounded-t-xl last:rounded-b-xl transition-colors"
+              className="w-full px-3 py-2 text-left text-sm text-neutral-200 hover:bg-white/5 first:rounded-t-xl last:rounded-b-xl transition-colors"
             >
               {result.label}
             </button>
