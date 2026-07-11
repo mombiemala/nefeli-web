@@ -8,6 +8,7 @@ import { bigThree, elementBalance } from "@/lib/astrology/chart-utils";
 import type { NatalChart, PlanetPosition } from "@/lib/astrology/types";
 import { CopyButton } from "@/components/CopyButton";
 import { Skeleton, SkeletonLines } from "@/components/Skeleton";
+import { NumbersCard } from "@/components/astrology/NumbersCard";
 
 export default function ChartPage() {
   const [loading, setLoading] = useState(true);
@@ -140,6 +141,8 @@ export default function ChartPage() {
         <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">Aspects</h2>
         <AspectGrid aspects={chart.aspects} />
       </div>
+
+      <NumbersCard />
     </div>
   );
 }
