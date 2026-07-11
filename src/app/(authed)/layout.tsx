@@ -11,6 +11,7 @@ const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/ask", label: "Chat" },
   { href: "/chart", label: "Chart" },
   { href: "/transits", label: "Transits" },
+  { href: "/map", label: "Places" },
   { href: "/monthly", label: "Monthly" },
   { href: "/memory", label: "Memory" },
   { href: "/profile", label: "Profile" },
