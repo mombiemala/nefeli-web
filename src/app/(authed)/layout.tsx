@@ -14,6 +14,7 @@ const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/map", label: "Places" },
   { href: "/monthly", label: "Monthly" },
   { href: "/memory", label: "Memory" },
+  { href: "/people", label: "People" },
   { href: "/profile", label: "Profile" },
 ];
 
@@ -95,7 +96,7 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden items-center gap-2 md:flex">
+          <nav className="hidden flex-wrap items-center justify-end gap-1.5 md:flex">
             {NAV_ITEMS.map((item) => (
               <Link key={item.href} href={item.href} className={linkClass(item.href)}>
                 {item.label}
