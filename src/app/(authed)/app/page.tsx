@@ -22,6 +22,10 @@ const ENERGY: Record<string, { label: string; className: string }> = {
 };
 
 type Nudge = { id: string; title: string; body: string };
+type RelTransit = {
+  personId: string; name: string; transiting: string; natal: string;
+  glyph: string; transitGlyph: string; hint: string;
+};
 
 export default function TodayPage() {
   const [loading, setLoading] = useState(true);
@@ -29,6 +33,7 @@ export default function TodayPage() {
   const [error, setError] = useState<string | null>(null);
   const [horizon, setHorizon] = useState<Transit | null>(null);
   const [nudge, setNudge] = useState<Nudge | null>(null);
+  const [relations, setRelations] = useState<RelTransit[]>([]);
 
   // Check-in
   const [reflection, setReflection] = useState("");
@@ -68,6 +73,13 @@ export default function TodayPage() {
             );
             if (unread) setNudge({ id: unread.id, title: unread.title, body: unread.body });
           }
+        } catch { /* non-fatal */ }
+
+        // How the sky is connecting the user and their people today.
+        try {
+          const rRes = await authedFetch("/api/companion/people-today", { method: "GET" });
+          const rData = await rRes.json();
+          if (rRes.ok) setRelations(rData.items ?? []);
         } catch { /* non-fatal */ }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not load today.");
@@ -188,6 +200,23 @@ export default function TodayPage() {
             loudest note in your sky right now. Nothing to brace for — just where the weather is
             asking for a little more of your attention.
           </p>
+        </div>
+      )}
+
+      {relations.length > 0 && (
+        <div className="card-glow rounded-2xl border border-white/5 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Between you &amp; your people</p>
+            <a href="/people" className="text-xs text-neutral-500 underline-offset-4 hover:text-neutral-300 hover:underline">Open</a>
+          </div>
+          <ul className="mt-2 space-y-2">
+            {relations.map((r, i) => (
+              <li key={i} className="text-sm leading-6 text-neutral-300">
+                <span className="text-neutral-100">{r.transitGlyph} {r.transiting}</span> {r.glyph} {r.name}’s {r.natal}
+                <span className="text-neutral-500"> — {r.hint}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
