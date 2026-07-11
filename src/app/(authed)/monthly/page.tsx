@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
 import { CopyButton } from "@/components/CopyButton";
 import { Skeleton, SkeletonLines } from "@/components/Skeleton";
+import { SolarYearCard } from "@/components/astrology/SolarYearCard";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -71,6 +72,8 @@ export default function MonthlyPage() {
       <div className="flex justify-end">
         <CopyButton text={`${MONTHS[guide.month - 1]} ${guide.year}\n\n${guide.overview}`} label="Copy overview" />
       </div>
+
+      <SolarYearCard />
 
       {moon && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-neutral-300">
