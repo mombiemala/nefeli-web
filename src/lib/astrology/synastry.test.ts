@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { synastryAspects, relationshipPlanets } from "./synastry";
+import { synastryAspects, relationshipPlanets, compatibilityScore } from "./synastry";
 
 describe("synastryAspects", () => {
   it("detects a conjunction within orb", () => {
@@ -39,6 +39,24 @@ describe("synastryAspects", () => {
     const b = [{ name: "Moon", absoluteDegree: 5 }]; // Venus-Moon 5°, Sun-Moon 5° → both conj
     const asp = synastryAspects(a, b);
     for (let i = 1; i < asp.length; i++) expect(asp[i].orb).toBeGreaterThanOrEqual(asp[i - 1].orb);
+  });
+});
+
+describe("compatibilityScore", () => {
+  it("is 50 (neutral) with no aspects", () => {
+    expect(compatibilityScore([]).score).toBe(50);
+  });
+  it("rises above 50 for flowing aspects and falls below for friction", () => {
+    const flowing = compatibilityScore([{ a: "Sun", b: "Moon", type: "trine", glyph: "△", orb: 1 }]);
+    const hard = compatibilityScore([{ a: "Sun", b: "Mars", type: "square", glyph: "□", orb: 1 }]);
+    expect(flowing.score).toBeGreaterThan(50);
+    expect(flowing.flowing).toBe(1);
+    expect(hard.score).toBeLessThan(50);
+    expect(hard.friction).toBe(1);
+  });
+  it("stays within 0–100", () => {
+    const many = Array.from({ length: 40 }, () => ({ a: "Sun", b: "Moon", type: "trine" as const, glyph: "△", orb: 0 }));
+    expect(compatibilityScore(many).score).toBe(100);
   });
 });
 

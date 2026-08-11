@@ -59,3 +59,26 @@ export function relationshipPlanets(planets: { name: string; absoluteDegree: num
     .filter((p) => RELATIONSHIP_BODIES.includes(p.name))
     .map((p) => ({ name: p.name, absoluteDegree: p.absoluteDegree }));
 }
+
+// Rough "resonance" of a set of cross-aspects — flowing aspects lift it,
+// hard aspects lower it. A heuristic for a group compatibility grid, not a
+// verdict on a relationship.
+const ASPECT_WEIGHT: Record<AspectType, number> = {
+  trine: 2, sextile: 1.2, conjunction: 1, square: -1.5, opposition: -1.2,
+};
+
+export interface Compatibility { score: number; flowing: number; friction: number }
+
+/** A 0–100 resonance score from cross-aspects (50 = neutral). */
+export function compatibilityScore(aspects: SynastryAspect[]): Compatibility {
+  let sum = 0, flowing = 0, friction = 0;
+  for (const a of aspects) {
+    const w = ASPECT_WEIGHT[a.type];
+    // Tighter aspects count a little more (orb 0 → full weight, orb 6 → ~half).
+    sum += w * (1 - a.orb / 12);
+    if (w > 0) flowing++; else friction++;
+  }
+  const score = Math.max(0, Math.min(100, Math.round(50 + sum * 6)));
+  return { score, flowing, friction };
+}
+

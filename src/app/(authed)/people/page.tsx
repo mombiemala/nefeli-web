@@ -5,6 +5,7 @@ import { authedFetch } from "@/lib/api";
 import LocationAutocomplete from "@/components/LocationAutocomplete";
 import { CopyButton } from "@/components/CopyButton";
 import { SkeletonLines } from "@/components/Skeleton";
+import { HouseholdsSection } from "@/components/companion/HouseholdsSection";
 
 type Person = {
   id: string; name: string; relationship: string | null; birthDate: string;
@@ -221,6 +222,10 @@ export default function PeoplePage() {
           ))}
         </div>
       )}
+
+      <div className="border-t border-white/5 pt-6">
+        <HouseholdsSection people={people.map((p) => ({ id: p.id, name: p.name }))} />
+      </div>
     </div>
   );
 }
