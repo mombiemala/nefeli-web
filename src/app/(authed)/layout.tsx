@@ -19,6 +19,10 @@ const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/profile", label: "Profile" },
 ];
 
+// Optional community space (Discord/Circle/etc). Hidden until the invite URL
+// is configured. NEXT_PUBLIC_* is inlined at build time.
+const COMMUNITY_URL = process.env.NEXT_PUBLIC_COMMUNITY_URL;
+
 export default function AuthedLayout({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -108,6 +112,16 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
                 )}
               </Link>
             ))}
+            {COMMUNITY_URL && (
+              <a
+                href={COMMUNITY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent transition hover:bg-accent/15"
+              >
+                Community
+              </a>
+            )}
             <button
               type="button"
               onClick={logout}
@@ -164,6 +178,16 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
                   )}
                 </Link>
               ))}
+              {COMMUNITY_URL && (
+                <a
+                  href={COMMUNITY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-accent hover:bg-accent/15"
+                >
+                  Community
+                </a>
+              )}
               <button
                 type="button"
                 onClick={logout}
