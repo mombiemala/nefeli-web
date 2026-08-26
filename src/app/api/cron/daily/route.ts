@@ -4,6 +4,8 @@ import { loadCompanionContext } from "@/lib/companion/context";
 import { ensureDailyGuidance, dayKeyFor } from "@/lib/companion/daily";
 import { complete } from "@/lib/astrology/prompt";
 import { emailEnabled, sendEmail } from "@/lib/notify/email";
+import { discordEnabled, postToDiscord } from "@/lib/notify/discord";
+import { computeSkyWeather } from "@/lib/astrology/sky-weather";
 import { transitingPositions } from "@/lib/astrology/transiting-positions";
 import { synastryAspects, relationshipPlanets } from "@/lib/astrology/synastry";
 import type { AssembledContext } from "@/lib/astrology/assemble-context";
@@ -139,6 +141,39 @@ async function processUser(
   return out;
 }
 
+/** Post today's collective "sky weather" to the community Discord, once a day. */
+async function broadcastSkyWeather(): Promise<boolean> {
+  if (!discordEnabled()) return false;
+
+  // Claim today's slot; a unique-key conflict means another run already posted.
+  const today = new Date().toISOString().slice(0, 10);
+  const { error: claimErr } = await supabaseAdmin.from("daily_broadcasts").insert({ broadcast_date: today });
+  if (claimErr) {
+    if (/duplicate|unique/i.test(claimErr.message)) return false;
+    throw new Error(claimErr.message);
+  }
+
+  const sw = computeSkyWeather(new Date());
+  const aspectLine = sw.aspect ? `${sw.aspect.a} ${sw.aspect.type} ${sw.aspect.b}` : "a quiet planetary day";
+
+  let vibe = "";
+  try {
+    vibe = await complete(
+      "You are NEFELI, a warm, grounded astrology companion writing a one-line collective 'sky weather' note for a community channel. Inclusive, non-fatalistic, no user-specific details.",
+      `Moon in ${sw.moonSign}, ${sw.phase}. ${aspectLine}. Write ONE warm sentence (max 24 words) capturing today's collective mood and a gentle invitation. No greeting, no hashtags.`,
+      120,
+    );
+  } catch { /* the vibe line is optional */ }
+
+  const description =
+    `${sw.phaseEmoji} Moon in **${sw.moonSign}** ${sw.moonGlyph} · ${sw.phase}\n` +
+    `✦ ${aspectLine}` + (vibe ? `\n\n${vibe.trim()}` : "");
+
+  return postToDiscord({
+    embeds: [{ title: `🌙 Sky weather — ${sw.date}`, description, color: 0xb99cf0, footer: { text: "NEFELI · your astrology companion" } }],
+  });
+}
+
 async function run(): Promise<NextResponse> {
   const { data: profiles, error } = await supabaseAdmin
     .from("birth_profiles").select("user_id").order("user_id", { ascending: true });
@@ -162,7 +197,15 @@ async function run(): Promise<NextResponse> {
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, userIds.length) }, worker));
 
-  return NextResponse.json({ ok: true, users: userIds.length, ...totals });
+  // Collective community broadcast (independent of per-user work).
+  let broadcast = false;
+  try {
+    broadcast = await broadcastSkyWeather();
+  } catch (e) {
+    console.error("cron/daily sky-weather broadcast failed:", e);
+  }
+
+  return NextResponse.json({ ok: true, users: userIds.length, ...totals, broadcast });
 }
 
 export async function GET(req: Request) {
