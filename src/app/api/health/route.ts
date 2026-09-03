@@ -42,6 +42,17 @@ export async function GET() {
     db = { ok: false, error: e instanceof Error ? e.message : "query failed" };
   }
 
+  // Service-role capability — the key must be the SECRET/service_role key, not
+  // the publishable/anon key. A read passes RLS silently even with the wrong
+  // key; only an admin-only call (listing auth users) proves real privilege.
+  let serviceRole: { valid: boolean; error?: string } = { valid: false };
+  try {
+    const { error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1 });
+    serviceRole = error ? { valid: false, error: error.message } : { valid: true };
+  } catch (e) {
+    serviceRole = { valid: false, error: e instanceof Error ? e.message : "admin call failed" };
+  }
+
   // Schema completeness — probe every table the companion app needs.
   const EXPECTED = [
     "birth_profiles", "life_contexts", "declarations", "conversations", "messages",
@@ -58,11 +69,11 @@ export async function GET() {
   }));
   const schema = { complete: missing.length === 0, presentCount: present.length, missing };
 
-  const ok = env.supabaseUrl && env.anonKey && env.serviceRole && auth.ok && db.ok && schema.complete;
+  const ok = env.supabaseUrl && env.anonKey && env.serviceRole && auth.ok && db.ok && serviceRole.valid && schema.complete;
   return NextResponse.json(
     {
       ok,
-      supabase: { url, projectRef: projectRef(url), auth, db, schema },
+      supabase: { url, projectRef: projectRef(url), auth, db, serviceRole, schema },
       env,
       time: new Date().toISOString(),
     },
