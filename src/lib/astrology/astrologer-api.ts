@@ -14,6 +14,7 @@ import type {
 } from "./types";
 import { demoEphemeris } from "./utils";
 import { ASPECT_GLYPHS, PLANET_GLYPHS, SIGN_GLYPHS } from "./constants";
+import { computeNatalChart } from "./natal-chart";
 
 const BASE = "https://astrologer.p.rapidapi.com";
 
@@ -68,41 +69,43 @@ export async function generateBirthChart(
   subject: BirthSubject,
 ): Promise<{ chart: NatalChart; svg?: string; raw: unknown }> {
   if (demoEphemeris()) {
-    const chart = buildDemoChart(seedKey(subject), subject.timeUnknown);
-    return { chart, svg: undefined, raw: { demo: true } };
+    return { chart: computeNatalChart(subject), svg: undefined, raw: { computed: true } };
   }
-  const res = await fetch(`${BASE}/api/v5/chart/birth-chart`, {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify({
-      subject: apiSubject(subject),
-      theme: "dark",
-      language: "EN",
-    }),
-  });
-  if (!res.ok) throw new Error(`Astrologer birth-chart failed: ${res.status}`);
-  const data = await res.json();
-  return {
-    chart: mapApiChart(data, subject.timeUnknown),
-    svg: data.chart ?? data.svg,
-    raw: data,
-  };
+  try {
+    const res = await fetch(`${BASE}/api/v5/chart/birth-chart`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ subject: apiSubject(subject), theme: "dark", language: "EN" }),
+    });
+    if (!res.ok) throw new Error(`Astrologer birth-chart failed: ${res.status}`);
+    const data = await res.json();
+    return { chart: mapApiChart(data, subject.timeUnknown), svg: data.chart ?? data.svg, raw: data };
+  } catch (e) {
+    // Never hard-fail onboarding on an external API hiccup — compute the real
+    // chart in-house (astronomy-engine) instead.
+    console.error("birth-chart API failed, using in-house computation:", e);
+    return { chart: computeNatalChart(subject), svg: undefined, raw: { computed: true, fallback: true } };
+  }
 }
 
 /** AI-optimized XML context — fed directly into the Claude system prompt. */
 export async function getBirthChartContext(subject: BirthSubject): Promise<string> {
   if (demoEphemeris()) {
-    const chart = buildDemoChart(seedKey(subject), subject.timeUnknown);
-    return buildDemoChartXml(subject.name, chart);
+    return buildDemoChartXml(subject.name, computeNatalChart(subject));
   }
-  const res = await fetch(`${BASE}/api/v5/context/birth-chart`, {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify({ subject: apiSubject(subject) }),
-  });
-  if (!res.ok) throw new Error(`Astrologer context/birth-chart failed: ${res.status}`);
-  const data = await res.json();
-  return typeof data === "string" ? data : (data.context ?? JSON.stringify(data));
+  try {
+    const res = await fetch(`${BASE}/api/v5/context/birth-chart`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ subject: apiSubject(subject) }),
+    });
+    if (!res.ok) throw new Error(`Astrologer context/birth-chart failed: ${res.status}`);
+    const data = await res.json();
+    return typeof data === "string" ? data : (data.context ?? JSON.stringify(data));
+  } catch (e) {
+    console.error("birth-chart context API failed, using in-house computation:", e);
+    return buildDemoChartXml(subject.name, computeNatalChart(subject));
+  }
 }
 
 // ── Transits ─────────────────────────────────────────────────
