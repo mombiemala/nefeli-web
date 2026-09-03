@@ -42,11 +42,27 @@ export async function GET() {
     db = { ok: false, error: e instanceof Error ? e.message : "query failed" };
   }
 
-  const ok = env.supabaseUrl && env.anonKey && env.serviceRole && auth.ok && db.ok;
+  // Schema completeness — probe every table the companion app needs.
+  const EXPECTED = [
+    "birth_profiles", "life_contexts", "declarations", "conversations", "messages",
+    "daily_guidance", "insights", "monthly_guides", "notifications", "people",
+    "solar_returns", "households", "household_members", "daily_broadcasts",
+  ];
+  const present: string[] = [];
+  const missing: string[] = [];
+  await Promise.all(EXPECTED.map(async (t) => {
+    const { error } = await supabaseAdmin.from(t).select("*", { head: true, count: "exact" });
+    // "relation does not exist" (42P01) => missing; any other error still means the table resolves.
+    if (error && /does not exist|42P01/i.test(error.message)) missing.push(t);
+    else present.push(t);
+  }));
+  const schema = { complete: missing.length === 0, presentCount: present.length, missing };
+
+  const ok = env.supabaseUrl && env.anonKey && env.serviceRole && auth.ok && db.ok && schema.complete;
   return NextResponse.json(
     {
       ok,
-      supabase: { url, projectRef: projectRef(url), auth, db },
+      supabase: { url, projectRef: projectRef(url), auth, db, schema },
       env,
       time: new Date().toISOString(),
     },
