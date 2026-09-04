@@ -46,11 +46,32 @@ export async function ensureDailyGuidance(
     .sort((a, b) => b.intensity - a.intensity)
     .slice(0, 3);
 
-  const guidance = await complete(
-    ctx.system,
-    `Write ${profile.name}'s guidance for today (${date}). Two short paragraphs, second person, warm, no headers.
+  let guidance: string;
+  try {
+    guidance = await complete(
+      ctx.system,
+      `Write ${profile.name}'s guidance for today (${date}). Two short paragraphs, second person, warm, no headers.
 The felt energy today is "${ENERGY_LABEL[level]}". Weave in the moon and the strongest current transits, and connect them to what's alive in their life right now. Non-fatalistic — describe the weather, not fate. End on something grounding, not a task list.`,
-  );
+    );
+  } catch (e) {
+    // Claude unavailable (e.g. no API credits). Don't break the page or cache a
+    // degraded reading — return a warm, chart-based placeholder that isn't
+    // persisted, so a real reading generates as soon as Claude is reachable.
+    console.error("daily guidance generation failed (Claude unavailable?):", e);
+    const top = keyTransits[0];
+    const placeholder =
+      `Today the Moon moves through ${ctx.moon.moonSign}${ctx.moon.phaseName ? `, ${String(ctx.moon.phaseName).toLowerCase()}` : ""}. ` +
+      (top ? `The sky's strongest note is ${top.transitingPlanet} ${top.aspect} your ${top.natalPlanet}. ` : "") +
+      `Let it be a ${ENERGY_LABEL[level].toLowerCase()} kind of day — notice what it stirs, and keep a gentle pace.\n\n` +
+      `Your full daily reading will appear here shortly.`;
+    return {
+      row: {
+        user_id: uid, date, moon_sign: ctx.moon.moonSign, moon_phase: ctx.moon.phaseName,
+        key_transits: keyTransits, guidance: placeholder, prompt, energy_level: level.toLowerCase(),
+      },
+      created: false,
+    };
+  }
 
   const row = {
     user_id: uid,

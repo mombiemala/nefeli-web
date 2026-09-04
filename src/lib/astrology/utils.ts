@@ -20,7 +20,10 @@ export function isDemoMode(): boolean {
 /** Claude readings run live once ANTHROPIC_API_KEY is set (independent of the
  *  ephemeris key), so you can turn on real readings without the Astrologer API. */
 export function demoClaude(): boolean {
-  return forcedDemo() || !process.env.ANTHROPIC_API_KEY;
+  // Real AI runs when ANY supported LLM provider key is configured.
+  return forcedDemo() || !(
+    process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY
+  );
 }
 
 /** Real ephemeris (charts/transits/moon) runs once RAPIDAPI_KEY is set. */
