@@ -5,11 +5,81 @@ import Anthropic from "@anthropic-ai/sdk";
 import { demoClaude, seededPick } from "./utils";
 
 export const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5";
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+const GROQ_MODEL = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
 
 let client: Anthropic | null = null;
 function anthropic(): Anthropic {
   if (!client) client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" });
   return client;
+}
+
+// Provider-flexible so NEFELI can run on a free-tier LLM (Gemini/Groq) instead
+// of the paid Anthropic API. A free-provider key, when set, takes precedence.
+type Provider = "gemini" | "groq" | "anthropic";
+function activeProvider(): Provider {
+  if (process.env.GEMINI_API_KEY) return "gemini";
+  if (process.env.GROQ_API_KEY) return "groq";
+  return "anthropic";
+}
+
+async function geminiComplete(system: string, messages: ChatMessage[], maxTokens: number): Promise<string> {
+  const key = process.env.GEMINI_API_KEY!;
+  const contents = messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents,
+        generationConfig: { maxOutputTokens: maxTokens, temperature: 0.9 },
+      }),
+    },
+  );
+  if (!res.ok) throw new Error(`Gemini failed: ${res.status} ${await res.text().catch(() => "")}`);
+  const data = await res.json();
+  return (data.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("").trim();
+}
+
+async function groqComplete(system: string, messages: ChatMessage[], maxTokens: number): Promise<string> {
+  const key = process.env.GROQ_API_KEY!;
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      max_tokens: maxTokens,
+      temperature: 0.9,
+      messages: [{ role: "system", content: system }, ...messages.map((m) => ({ role: m.role, content: m.content }))],
+    }),
+  });
+  if (!res.ok) throw new Error(`Groq failed: ${res.status} ${await res.text().catch(() => "")}`);
+  const data = await res.json();
+  return (data.choices?.[0]?.message?.content ?? "").trim();
+}
+
+async function anthropicComplete(system: string, messages: ChatMessage[], maxTokens: number): Promise<string> {
+  const res = await anthropic().messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: maxTokens,
+    system,
+    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+  });
+  return res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
+}
+
+/** One completion across whichever provider is configured. */
+async function completeMessages(system: string, messages: ChatMessage[], maxTokens: number): Promise<string> {
+  switch (activeProvider()) {
+    case "gemini": return geminiComplete(system, messages, maxTokens);
+    case "groq": return groqComplete(system, messages, maxTokens);
+    default: return anthropicComplete(system, messages, maxTokens);
+  }
 }
 
 export interface AstroContext {
@@ -89,18 +159,31 @@ export async function streamChat(
     });
   }
 
-  const stream = await anthropic().messages.stream({
-    model: CLAUDE_MODEL,
-    max_tokens: 1500,
-    system,
-    messages: messages.map((m) => ({ role: m.role, content: m.content })),
-  });
+  if (activeProvider() === "anthropic") {
+    const stream = await anthropic().messages.stream({
+      model: CLAUDE_MODEL,
+      max_tokens: 1500,
+      system,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    });
+    return new ReadableStream({
+      async start(controller) {
+        stream.on("text", (t) => controller.enqueue(encoder.encode(t)));
+        stream.on("end", () => controller.close());
+        stream.on("error", (e) => controller.error(e));
+      },
+    });
+  }
 
+  // Free providers (Gemini/Groq): generate fully, then emit a smooth stream.
+  const full = await completeMessages(system, messages, 1500);
   return new ReadableStream({
     async start(controller) {
-      stream.on("text", (t) => controller.enqueue(encoder.encode(t)));
-      stream.on("end", () => controller.close());
-      stream.on("error", (e) => controller.error(e));
+      for (const token of tokenize(full)) {
+        controller.enqueue(encoder.encode(token));
+        await sleep(8);
+      }
+      controller.close();
     },
   });
 }
@@ -112,13 +195,7 @@ export async function complete(
   maxTokens = 1500,
 ): Promise<string> {
   if (demoClaude()) return demoReply(userPrompt, system);
-  const res = await anthropic().messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: maxTokens,
-    system,
-    messages: [{ role: "user", content: userPrompt }],
-  });
-  return res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
+  return completeMessages(system, [{ role: "user", content: userPrompt }], maxTokens);
 }
 
 // ── Demo-mode reply (context-aware stand-in; no API key needed) ──
