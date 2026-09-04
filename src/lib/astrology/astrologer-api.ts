@@ -41,6 +41,18 @@ function headers() {
   };
 }
 
+// Hard timeout so an unhealthy/hanging API fast-fails to the in-house fallback
+// instead of blocking the serverless function until it 504s.
+async function fetchWithTimeout(url: string, opts: RequestInit, ms = 4000): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Shape the subject the way the Astrologer API expects it. */
 function apiSubject(s: BirthSubject) {
   return {
@@ -69,7 +81,7 @@ export async function generateBirthChart(
     return { chart: computeNatalChart(subject), svg: undefined, raw: { computed: true } };
   }
   try {
-    const res = await fetch(`${BASE}/api/v5/chart/birth-chart`, {
+    const res = await fetchWithTimeout(`${BASE}/api/v5/chart/birth-chart`, {
       method: "POST",
       headers: headers(),
       body: JSON.stringify({ subject: apiSubject(subject), theme: "dark", language: "EN" }),
@@ -91,7 +103,7 @@ export async function getBirthChartContext(subject: BirthSubject): Promise<strin
     return buildDemoChartXml(subject.name, computeNatalChart(subject));
   }
   try {
-    const res = await fetch(`${BASE}/api/v5/context/birth-chart`, {
+    const res = await fetchWithTimeout(`${BASE}/api/v5/context/birth-chart`, {
       method: "POST",
       headers: headers(),
       body: JSON.stringify({ subject: apiSubject(subject) }),
@@ -115,7 +127,7 @@ export async function getTransits(
     return buildDemoTransits(computeNatalChart(subject), when);
   }
   try {
-    const res = await fetch(`${BASE}/api/v5/chart/transit`, {
+    const res = await fetchWithTimeout(`${BASE}/api/v5/chart/transit`, {
       method: "POST",
       headers: headers(),
       body: JSON.stringify({
@@ -139,7 +151,7 @@ export async function getTransitContext(
     return buildDemoTransitXml(buildDemoTransits(computeNatalChart(subject), when), when);
   }
   try {
-    const res = await fetch(`${BASE}/api/v5/context/transit`, {
+    const res = await fetchWithTimeout(`${BASE}/api/v5/context/transit`, {
       method: "POST",
       headers: headers(),
       body: JSON.stringify({
@@ -161,7 +173,7 @@ export async function getTransitContext(
 export async function getMoonPhase(when: Date): Promise<MoonPhaseData> {
   if (demoEphemeris()) return buildDemoMoonPhase(when);
   try {
-    const res = await fetch(`${BASE}/api/v5/moon-phase`, {
+    const res = await fetchWithTimeout(`${BASE}/api/v5/moon-phase`, {
       method: "POST",
       headers: headers(),
       body: JSON.stringify({
