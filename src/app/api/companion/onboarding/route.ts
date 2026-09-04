@@ -5,6 +5,9 @@ import { generateBirthChart, getBirthChartContext } from "@/lib/astrology/astrol
 import { assembleContext } from "@/lib/astrology/assemble-context";
 import { complete } from "@/lib/astrology/prompt";
 
+// Give the (best-effort) welcome generation headroom on Pro; harmless on Hobby.
+export const maxDuration = 60;
+
 interface LifeContextInput {
   category: string;
   title?: string;
@@ -110,27 +113,44 @@ export async function POST(req: Request) {
       });
     }
 
-    // The Day-0 welcome reading — weave the chart with what they just shared.
-    const { system } = await assembleContext({
-      profile: profileInput,
-      cachedChartXml: chartXml,
-      lifeContexts: cleanContexts.map((c) => ({
-        category: c.category, title: c.title, description: c.description, isActive: true,
-      })),
-      declarations: declaration && String(declaration).trim()
-        ? [{ declaration: String(declaration).trim(), declaredAt: new Date().toISOString(), isActive: true }]
-        : [],
-      insights: [],
-      userName: name,
-    });
-
-    const welcome = await complete(
-      system,
-      `Write ${name}'s welcome reading — exactly three warm paragraphs, second person, no headers, no jargon dumps.
+    // The Day-0 welcome reading — best-effort. The profile is already saved, so
+    // onboarding must SUCCEED even if the AI reading is slow or unavailable; a
+    // timeout falls back to a warm default (the full reading appears on Today).
+    let welcome =
+      `${name}, welcome — I'm so glad you're here.\n\n` +
+      `I've cast your chart and I'm holding everything you just shared with me. ` +
+      `Give me a moment to settle into it.\n\n` +
+      `Open Today whenever you're ready — your first reading will be waiting, and we'll walk it together from here.`;
+    try {
+      const generated = await Promise.race([
+        (async () => {
+          const { system } = await assembleContext({
+            profile: profileInput,
+            cachedChartXml: chartXml,
+            lifeContexts: cleanContexts.map((c) => ({
+              category: c.category, title: c.title, description: c.description, isActive: true,
+            })),
+            declarations: declaration && String(declaration).trim()
+              ? [{ declaration: String(declaration).trim(), declaredAt: new Date().toISOString(), isActive: true }]
+              : [],
+            insights: [],
+            userName: name,
+          });
+          return complete(
+            system,
+            `Write ${name}'s welcome reading — exactly three warm paragraphs, second person, no headers, no jargon dumps.
 1) Who they are at their core, weaving Sun, Moon, and Rising into one felt portrait.
 2) Connect their chart to what they just told you about their life right now — be specific to what they shared.
 3) What this season gently invites, and a warm invitation to come back each day so you can walk it together.`,
-    );
+            600,
+          );
+        })(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 7000)),
+      ]);
+      if (generated && generated.trim()) welcome = generated;
+    } catch (e) {
+      console.error("onboarding welcome generation failed (non-fatal):", e);
+    }
 
     return NextResponse.json({ ok: true, welcome });
   } catch (e) {
