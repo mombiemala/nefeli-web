@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 import { profileToSubject, type BirthProfileInput } from "@/lib/astrology/chart-utils";
-import { generateBirthChart, getBirthChartContext } from "@/lib/astrology/astrologer-api";
+import { computeNatalChart } from "@/lib/astrology/natal-chart";
+import { buildDemoChartXml } from "@/lib/astrology/demo-data";
 import { assembleContext } from "@/lib/astrology/assemble-context";
 import { complete } from "@/lib/astrology/prompt";
 
@@ -53,11 +54,11 @@ export async function POST(req: Request) {
 
     const subject = profileToSubject(profileInput);
 
-    // Cache the natal chart + AI-context XML (never changes for this person).
-    const [chartXml, chartRes] = await Promise.all([
-      getBirthChartContext(subject),
-      generateBirthChart(subject),
-    ]);
+    // Cache the natal chart + AI-context XML, computed in-house — no external
+    // API on the critical signup path (it was hanging and timing the function
+    // out). The chart never changes for this person, so this is cached once.
+    const chart = computeNatalChart(subject);
+    const chartXml = buildDemoChartXml(name, chart);
 
     // One default birth profile per user. Insert the new one FIRST, then remove
     // any prior profiles — so a failed insert never leaves the user with none.
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
         latitude,
         longitude,
         timezone,
-        chart_data: chartRes.chart,
+        chart_data: chart,
         chart_xml: chartXml,
         is_default: true,
       })
