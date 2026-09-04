@@ -5,7 +5,7 @@
 // generated locally, so the whole app is explorable without any keys.
 
 import {
-  buildDemoChart, buildDemoChartXml, buildDemoMoonPhase, buildDemoTransits,
+  buildDemoChartXml, buildDemoMoonPhase, buildDemoTransits,
   buildDemoTransitXml,
 } from "./demo-data";
 import type {
@@ -59,9 +59,6 @@ function apiSubject(s: BirthSubject) {
   };
 }
 
-function seedKey(s: BirthSubject) {
-  return `${s.name}|${s.year}-${s.month}-${s.day}|${s.latitude},${s.longitude}`;
-}
 
 // ── Birth chart ──────────────────────────────────────────────
 
@@ -115,20 +112,23 @@ export async function getTransits(
   when: Date,
 ): Promise<Transit[]> {
   if (demoEphemeris()) {
-    const chart = buildDemoChart(seedKey(subject), subject.timeUnknown);
-    return buildDemoTransits(chart, when);
+    return buildDemoTransits(computeNatalChart(subject), when);
   }
-  const res = await fetch(`${BASE}/api/v5/chart/transit`, {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify({
-      first_subject: apiSubject(subject),
-      transit_subject: transitMoment(subject, when),
-    }),
-  });
-  if (!res.ok) throw new Error(`Astrologer transit failed: ${res.status}`);
-  const data = await res.json();
-  return mapApiTransits(data, when);
+  try {
+    const res = await fetch(`${BASE}/api/v5/chart/transit`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({
+        first_subject: apiSubject(subject),
+        transit_subject: transitMoment(subject, when),
+      }),
+    });
+    if (!res.ok) throw new Error(`Astrologer transit failed: ${res.status}`);
+    return mapApiTransits(await res.json(), when);
+  } catch (e) {
+    console.error("transit API failed, using in-house computation:", e);
+    return buildDemoTransits(computeNatalChart(subject), when);
+  }
 }
 
 export async function getTransitContext(
@@ -136,38 +136,46 @@ export async function getTransitContext(
   when: Date,
 ): Promise<string> {
   if (demoEphemeris()) {
-    const chart = buildDemoChart(seedKey(subject), subject.timeUnknown);
-    return buildDemoTransitXml(buildDemoTransits(chart, when), when);
+    return buildDemoTransitXml(buildDemoTransits(computeNatalChart(subject), when), when);
   }
-  const res = await fetch(`${BASE}/api/v5/context/transit`, {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify({
-      first_subject: apiSubject(subject),
-      transit_subject: transitMoment(subject, when),
-    }),
-  });
-  if (!res.ok) throw new Error(`Astrologer context/transit failed: ${res.status}`);
-  const data = await res.json();
-  return typeof data === "string" ? data : (data.context ?? JSON.stringify(data));
+  try {
+    const res = await fetch(`${BASE}/api/v5/context/transit`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({
+        first_subject: apiSubject(subject),
+        transit_subject: transitMoment(subject, when),
+      }),
+    });
+    if (!res.ok) throw new Error(`Astrologer context/transit failed: ${res.status}`);
+    const data = await res.json();
+    return typeof data === "string" ? data : (data.context ?? JSON.stringify(data));
+  } catch (e) {
+    console.error("transit context API failed, using in-house computation:", e);
+    return buildDemoTransitXml(buildDemoTransits(computeNatalChart(subject), when), when);
+  }
 }
 
 // ── Moon phase ───────────────────────────────────────────────
 
 export async function getMoonPhase(when: Date): Promise<MoonPhaseData> {
   if (demoEphemeris()) return buildDemoMoonPhase(when);
-  const res = await fetch(`${BASE}/api/v5/moon-phase`, {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify({
-      year: when.getUTCFullYear(),
-      month: when.getUTCMonth() + 1,
-      day: when.getUTCDate(),
-    }),
-  });
-  if (!res.ok) throw new Error(`Astrologer moon-phase failed: ${res.status}`);
-  const data = await res.json();
-  return mapApiMoonPhase(data, when);
+  try {
+    const res = await fetch(`${BASE}/api/v5/moon-phase`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({
+        year: when.getUTCFullYear(),
+        month: when.getUTCMonth() + 1,
+        day: when.getUTCDate(),
+      }),
+    });
+    if (!res.ok) throw new Error(`Astrologer moon-phase failed: ${res.status}`);
+    return mapApiMoonPhase(await res.json(), when);
+  } catch (e) {
+    console.error("moon-phase API failed, using in-house computation:", e);
+    return buildDemoMoonPhase(when);
+  }
 }
 
 // ── Mapping helpers (best-effort for the live API) ───────────
