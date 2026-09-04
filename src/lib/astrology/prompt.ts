@@ -5,7 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { demoClaude, seededPick } from "./utils";
 
 export const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5";
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-3.6-flash";
 const GROQ_MODEL = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
 
 let client: Anthropic | null = null;
