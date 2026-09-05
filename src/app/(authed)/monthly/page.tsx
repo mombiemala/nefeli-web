@@ -1,4 +1,5 @@
 "use client";
+import { ForecastTabs } from "@/components/companion/ForecastTabs";
 
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
@@ -61,6 +62,7 @@ export default function MonthlyPage() {
 
   return (
     <div className="animate-fade-up mx-auto max-w-2xl space-y-6">
+      <ForecastTabs />
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-50">{MONTHS[guide.month - 1]} {guide.year}</h1>
         <p className="mt-1 text-sm text-neutral-400">Your month, read through your chart and your life.</p>

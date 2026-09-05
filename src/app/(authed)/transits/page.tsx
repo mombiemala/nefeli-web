@@ -1,4 +1,5 @@
 "use client";
+import { ForecastTabs } from "@/components/companion/ForecastTabs";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -65,6 +66,7 @@ export default function TransitsPage() {
 
   return (
     <div className="animate-fade-up mx-auto max-w-2xl space-y-5">
+      <ForecastTabs />
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Transits</h1>
         <p className="mt-1 text-sm text-neutral-400">What the sky is activating in your chart right now.</p>

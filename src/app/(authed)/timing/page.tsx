@@ -1,4 +1,5 @@
 "use client";
+import { ForecastTabs } from "@/components/companion/ForecastTabs";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -122,6 +123,7 @@ export default function TimingPage() {
 
   return (
     <div className="animate-fade-up mx-auto max-w-2xl space-y-6">
+      <ForecastTabs />
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Timing</h1>
         <p className="mt-1 text-sm text-neutral-400">Your energy over the next 30 days, and the best windows for what matters.</p>
