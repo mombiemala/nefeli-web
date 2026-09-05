@@ -90,7 +90,7 @@ export function HouseholdsSection({ people }: { people: Person[] }) {
           )}
           <div className="flex justify-end">
             <button type="button" onClick={create} disabled={!canSave}
-              className="rounded-lg bg-neutral-50 px-5 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white disabled:opacity-50">
+              className="rounded-lg btn-brand px-5 py-2 text-sm font-semibold disabled:opacity-50">
               {saving ? "Creating…" : "Create"}
             </button>
           </div>

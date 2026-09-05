@@ -129,7 +129,7 @@ export default function PeoplePage() {
           <p className="mt-1 text-sm text-neutral-400">The connections you want to understand. I read your charts together.</p>
         </div>
         <button type="button" onClick={() => setShowAdd((v) => !v)}
-          className="shrink-0 rounded-lg bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white">
+          className="shrink-0 rounded-lg btn-brand px-4 py-2 text-sm font-semibold">
           {showAdd ? "Close" : "Add someone"}
         </button>
       </div>
@@ -164,7 +164,7 @@ export default function PeoplePage() {
             onSelect={handleLocationSelect} placeholder="City, State / Country" />
           <div className="flex justify-end">
             <button type="button" onClick={addPerson} disabled={!canAdd || adding}
-              className="rounded-lg bg-neutral-50 px-5 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white disabled:opacity-50">
+              className="rounded-lg btn-brand px-5 py-2 text-sm font-semibold disabled:opacity-50">
               {adding ? "Reading their chart…" : "Add"}
             </button>
           </div>

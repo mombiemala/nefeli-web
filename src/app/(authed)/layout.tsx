@@ -97,7 +97,7 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link href="/app" className="inline-flex items-center gap-2" aria-label="NEFELI home">
             <span className="text-accent animate-twinkle" aria-hidden>✦</span>
-            <span className="text-sm font-semibold tracking-[0.25em] text-neutral-200">NEFELI</span>
+            <span className="font-marcellus text-base tracking-[0.3em] text-neutral-100">NEFELI</span>
           </Link>
 
           {/* Desktop nav */}

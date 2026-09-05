@@ -104,7 +104,7 @@ export default function MapPage() {
             Astrocartography lines depend on your exact birth <em>time</em> — the angles rotate through
             the whole map over a single day. Add your birth time and your lines will appear here.
           </p>
-          <Link href="/profile" className="mt-4 inline-block rounded-lg bg-neutral-50 px-5 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white">
+          <Link href="/profile" className="mt-4 inline-block rounded-lg btn-brand px-5 py-2 text-sm font-semibold">
             Add birth time
           </Link>
         </div>

@@ -175,7 +175,7 @@ export default function AskPage() {
             type="button"
             onClick={send}
             disabled={streaming || !input.trim()}
-            className="rounded-xl bg-neutral-50 px-5 py-3 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white disabled:opacity-50"
+            className="rounded-xl btn-brand px-5 py-3 text-sm font-semibold disabled:opacity-50"
           >
             {streaming ? "…" : "Send"}
           </button>

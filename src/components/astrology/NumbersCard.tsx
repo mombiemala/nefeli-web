@@ -88,7 +88,7 @@ export function NumbersCard() {
             type="button"
             onClick={deepen}
             disabled={!fullName.trim() || loadingReading}
-            className="rounded-lg bg-neutral-50 px-4 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white disabled:opacity-50"
+            className="rounded-lg btn-brand px-4 py-2 text-sm font-semibold disabled:opacity-50"
           >
             {loadingReading ? "…" : "Read"}
           </button>

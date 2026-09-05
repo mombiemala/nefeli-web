@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Cormorant, DM_Sans, Marcellus } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Brand type: Cormorant (ethereal display serif), DM Sans (clean body),
+// Marcellus (classical, letter-spaced wordmark & eyebrows).
+const dmSans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"] });
+const cormorant = Cormorant({
+  variable: "--font-cormorant",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
 });
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const marcellus = Marcellus({ variable: "--font-marcellus", subsets: ["latin"], weight: "400" });
 
 export const metadata: Metadata = {
   title: {
@@ -18,19 +19,19 @@ export const metadata: Metadata = {
     template: "%s · NEFELI",
   },
   description:
-    "A warm, emotionally intelligent astrology companion that reads the sky through your life — your healing, your work, your relationships — and remembers what you share.",
+    "A personal astrology companion that reads the whole sky through your life — your healing, your work, your relationships — and remembers what you share.",
   applicationName: "NEFELI",
   openGraph: {
     title: "NEFELI — your astrology companion",
     description:
-      "An astrology companion that reads the sky through your life, remembers what you tell it, and meets you where you are — day after day.",
+      "The sky, read through your life. NEFELI reads your whole chart through what's actually happening for you — and remembers.",
     siteName: "NEFELI",
     type: "website",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#08080b",
+  themeColor: "#141024",
   colorScheme: "dark",
 };
 
@@ -40,7 +41,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      className={`${dmSans.variable} ${cormorant.variable} ${marcellus.variable}`}
+    >
       <body className="antialiased">{children}</body>
     </html>
   );

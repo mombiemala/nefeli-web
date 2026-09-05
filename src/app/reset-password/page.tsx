@@ -68,7 +68,7 @@ export default function ResetPasswordPage() {
               <p className="text-sm text-neutral-300">Your password has been updated.</p>
               <Link
                 href="/app"
-                className="mt-6 inline-block w-full rounded-lg bg-neutral-50 px-4 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white"
+                className="mt-6 inline-block w-full rounded-lg btn-brand px-4 py-2.5 text-sm font-semibold"
               >
                 Continue to NEFELI
               </Link>
@@ -139,7 +139,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-lg bg-neutral-50 px-4 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-lg btn-brand px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Updating…" : "Update password"}
               </button>
