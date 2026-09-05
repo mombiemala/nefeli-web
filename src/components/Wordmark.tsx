@@ -14,7 +14,7 @@ export function Wordmark({
       <span className="text-accent animate-twinkle" aria-hidden>
         ✦
       </span>
-      <span className="text-sm font-semibold tracking-[0.25em] text-neutral-200">
+      <span className="font-marcellus text-base tracking-[0.3em] text-neutral-100">
         NEFELI
       </span>
     </span>

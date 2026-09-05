@@ -5,10 +5,10 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { Wordmark } from "@/components/Wordmark";
 
-const FEATURES: [string, string][] = [
-  ["Reads your life, not just your sign", "Your chart is the language; your actual life is the subject. Every transit lands in what you’re really living."],
-  ["Remembers what you share", "The grief you named last month, the job search, the thing you’re creating — it holds all of it and connects the dots."],
-  ["Warm, never doom", "No fatalism, no toxic positivity, no cold horoscope. Honest, caring, and here for the hard days too."],
+const DIFFERENTIATORS: [string, string][] = [
+  ["Reads your life, not your sign", "Every transit lands in what you’re actually living — your work, your loves, your healing."],
+  ["Remembers what you share", "The grief you named, the job you’re chasing, the thing you’re making. It holds all of it."],
+  ["Warm, never doom", "No fatalism, no cold horoscope. Honest and kind — here for the hard days too."],
 ];
 
 export default function Home() {
@@ -28,7 +28,7 @@ export default function Home() {
   if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <span className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-800 border-t-neutral-300" />
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/10 border-t-accent" />
       </div>
     );
   }
@@ -39,14 +39,11 @@ export default function Home() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Wordmark href="/" />
           <div className="flex items-center gap-4">
-            <Link href="/login" className="text-sm font-medium text-neutral-300 transition-colors hover:text-neutral-50">
+            <Link href="/login" className="text-sm text-neutral-300 transition-colors hover:text-neutral-50">
               Log in
             </Link>
-            <Link
-              href="/login?mode=signup"
-              className="rounded-xl bg-neutral-50 px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-white"
-            >
-              Create account
+            <Link href="/login?mode=signup" className="btn-brand rounded-full px-4 py-2 text-sm font-semibold">
+              Begin
             </Link>
           </div>
         </div>
@@ -54,73 +51,63 @@ export default function Home() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        {/* A soft aura behind the headline. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[720px] max-w-full -translate-x-1/2 rounded-full opacity-60 blur-3xl"
-          style={{ background: "radial-gradient(closest-side, rgba(244,199,123,0.10), transparent)" }}
+          className="pointer-events-none absolute left-1/2 top-0 h-[460px] w-[820px] max-w-full -translate-x-1/2 rounded-full opacity-70 blur-3xl"
+          style={{ background: "radial-gradient(closest-side, rgba(185,162,242,0.18), rgba(240,171,199,0.08), transparent)" }}
         />
-        <div className="relative mx-auto max-w-3xl px-6 pb-20 pt-24 text-center">
-          <p className="text-xs font-medium uppercase tracking-[0.35em] text-accent/80">
-            Astrology that knows you
+        <div className="relative mx-auto max-w-3xl px-6 pb-16 pt-24 text-center">
+          <p className="font-marcellus text-xs uppercase tracking-[0.32em] text-accent">
+            Your personal astrology companion
           </p>
-          <h1 className="mt-5 text-balance text-4xl font-bold leading-[1.1] tracking-tight text-neutral-50 sm:text-6xl">
-            An astrology companion that’s actually kind — and{" "}
-            <span className="text-accent">remembers you</span>.
+          <h1 className="mx-auto mt-6 max-w-[15ch] text-balance text-5xl leading-[1.04] text-neutral-50 sm:text-7xl">
+            The sky, read through <em className="italic text-accent">your</em> life.
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg leading-8 text-neutral-400">
-            NEFELI reads the sky through <em>your</em> life — your healing, your work, your
-            relationships, your creative practice. It remembers what you tell it, and meets you where
-            you are, day after day.
+          <p className="mx-auto mt-7 max-w-xl text-pretty text-lg leading-8 text-neutral-300">
+            Not another one-size-fits-all horoscope. NEFELI reads your whole chart through what’s
+            actually happening for you — and remembers what you share.
           </p>
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/login?mode=signup"
-              className="rounded-xl bg-neutral-50 px-6 py-3 text-sm font-semibold text-neutral-950 shadow-lg shadow-black/40 transition-colors hover:bg-white"
-            >
-              Begin
+          <div className="mt-9 flex flex-wrap justify-center gap-3">
+            <Link href="/login?mode=signup" className="btn-brand rounded-full px-7 py-3.5 text-sm font-semibold">
+              Begin your chart
             </Link>
             <Link
               href="/login"
-              className="rounded-xl border border-white/10 px-6 py-3 text-sm font-medium text-neutral-100 transition-colors hover:border-white/20 hover:bg-white/5"
+              className="rounded-full border border-white/12 px-7 py-3.5 text-sm text-neutral-100 transition-colors hover:border-accent/50"
             >
               Log in
             </Link>
           </div>
+          <p className="mt-5 text-sm text-neutral-500">Free to start · birth time optional · gentle, never doom-y</p>
         </div>
       </section>
 
-      {/* How it feels */}
+      {/* What makes it different */}
       <section className="border-y border-white/5">
         <div className="mx-auto grid max-w-5xl gap-4 px-6 py-16 sm:grid-cols-3">
-          {FEATURES.map(([title, body], i) => (
-            <div
-              key={title}
-              className="card-glow rounded-2xl border border-white/5 p-6 transition-colors hover:border-white/10"
-            >
-              <span className="text-xs font-mono text-accent/70">0{i + 1}</span>
-              <h3 className="mt-3 text-base font-semibold text-neutral-50">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-neutral-400">{body}</p>
+          {DIFFERENTIATORS.map(([title, body]) => (
+            <div key={title} className="card-glow rounded-2xl border border-white/5 p-6">
+              <span className="text-accent" aria-hidden>✦</span>
+              <h3 className="font-display mt-3 text-2xl leading-tight text-neutral-50">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-neutral-300">{body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Daily ritual */}
+      {/* Everything, in one place */}
       <section className="mx-auto max-w-3xl px-6 py-20 text-center">
-        <h2 className="text-2xl font-bold tracking-tight text-neutral-50 sm:text-3xl">
-          A 60-second ritual that gets to know you
+        <p className="font-marcellus text-xs uppercase tracking-[0.3em] text-accent/90">Everything, in one place</p>
+        <h2 className="font-display mx-auto mt-4 max-w-[20ch] text-balance text-3xl leading-tight text-neutral-50 sm:text-4xl">
+          Your chart, your timing, your people & places — all personal.
         </h2>
-        <p className="mx-auto mt-4 max-w-xl text-pretty text-neutral-400">
-          Each day: the energy you’re carrying, guidance for it, and a gentle check-in. You share a
-          line about how you’re arriving — NEFELI reflects it back through your chart, and remembers.
+        <p className="mx-auto mt-5 max-w-xl text-pretty leading-7 text-neutral-300">
+          A daily reading tied to your real life. Your chart in plain language. The best days ahead.
+          Your bonds and your household. A companion to talk it through — that grows with you.
         </p>
-        <div className="mt-8">
-          <Link
-            href="/login?mode=signup"
-            className="inline-block rounded-xl bg-neutral-50 px-6 py-3 text-sm font-semibold text-neutral-950 shadow-lg shadow-black/40 transition-colors hover:bg-white"
-          >
-            Create your account
+        <div className="mt-9">
+          <Link href="/login?mode=signup" className="btn-brand inline-block rounded-full px-7 py-3.5 text-sm font-semibold">
+            Meet NEFELI
           </Link>
         </div>
       </section>
@@ -129,8 +116,8 @@ export default function Home() {
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
           <p className="text-sm text-neutral-500">© {new Date().getFullYear()} NEFELI</p>
           <div className="flex items-center gap-6">
-            <Link href="/login" className="text-sm text-neutral-400 transition-colors hover:text-neutral-300">Log in</Link>
-            <Link href="/privacy" className="text-sm text-neutral-400 transition-colors hover:text-neutral-300">Privacy</Link>
+            <Link href="/login" className="text-sm text-neutral-400 transition-colors hover:text-neutral-200">Log in</Link>
+            <Link href="/privacy" className="text-sm text-neutral-400 transition-colors hover:text-neutral-200">Privacy</Link>
           </div>
         </div>
       </footer>

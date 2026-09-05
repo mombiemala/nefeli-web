@@ -250,7 +250,7 @@ export default function TodayPage() {
                 type="button"
                 onClick={submitCheckin}
                 disabled={submitting || !reflection.trim()}
-                className="rounded-lg bg-neutral-50 px-5 py-2 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white disabled:opacity-50"
+                className="rounded-lg btn-brand px-5 py-2 text-sm font-semibold disabled:opacity-50"
               >
                 {submitting ? "…" : "Share"}
               </button>

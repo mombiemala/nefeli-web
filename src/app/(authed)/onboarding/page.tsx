@@ -133,7 +133,7 @@ export default function OnboardingPage() {
           </div>
           <a
             href="/app"
-            className="mt-8 inline-block rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white"
+            className="mt-8 inline-block rounded-lg btn-brand px-6 py-2.5 text-sm font-semibold"
           >
             Enter NEFELI
           </a>
@@ -273,12 +273,12 @@ export default function OnboardingPage() {
           </button>
           {step < TOTAL_STEPS ? (
             <button type="button" onClick={next}
-              className="rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white">
+              className="rounded-lg btn-brand px-6 py-2.5 text-sm font-semibold">
               Continue
             </button>
           ) : (
             <button type="button" onClick={finish} disabled={saving}
-              className="rounded-lg bg-neutral-50 px-6 py-2.5 text-sm font-semibold text-neutral-950 transition-colors hover:bg-white disabled:opacity-50">
+              className="rounded-lg btn-brand px-6 py-2.5 text-sm font-semibold disabled:opacity-50">
               {saving ? "Reading your chart…" : "Meet NEFELI"}
             </button>
           )}

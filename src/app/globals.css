@@ -1,23 +1,31 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────
-   NEFELI — nocturnal, warm design tokens.
-   A near-black sky base with a whisper of indigo overhead and a
-   warm ember below; a single gold accent; real Geist type.
+   NEFELI — "the hour between night and morning."
+   A deep twilight ground (plum-indigo), wisteria as the primary
+   accent, with dusk-rose and starlight-gold as companions.
+   Cormorant display · DM Sans body · Marcellus wordmark.
    ───────────────────────────────────────────────────────────── */
 :root {
-  --background: #08080b;
-  --foreground: #ededed;
-  --accent: #f4c77b;        /* warm gold — highlights, focus, key words */
-  --accent-strong: #eab55a;
+  --background: #141024;      /* deep twilight plum-indigo */
+  --surface: #1e1838;
+  --foreground: #F2ECFA;
+  --muted: #b6a9d2;
+  --accent: #b9a2f2;          /* wisteria — the primary accent */
+  --accent-strong: #cdb8ff;
+  --gold: #ecd08a;            /* starlight */
+  --rose: #f0abc7;            /* dusk rose */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-gold: var(--gold);
+  --color-rose: var(--rose);
+  --font-sans: var(--font-dm-sans);
+  --font-display: var(--font-cormorant);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 html {
@@ -31,40 +39,60 @@ body {
 
 body {
   color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+  font-family: var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   min-height: 100vh;
-  /* The night sky: a barely-there indigo glow up top, a warm ember below. */
+  /* Dawn breaking over twilight: soft wisteria overhead, a rose-gold ember below. */
   background-image:
-    radial-gradient(120% 80% at 50% -10%, rgba(76, 66, 145, 0.18), transparent 60%),
-    radial-gradient(90% 60% at 85% 115%, rgba(180, 130, 70, 0.08), transparent 55%);
+    radial-gradient(115% 75% at 50% -12%, rgba(155, 132, 214, 0.22), transparent 60%),
+    radial-gradient(85% 55% at 88% 112%, rgba(224, 159, 190, 0.12), transparent 55%),
+    radial-gradient(70% 50% at 10% 105%, rgba(221, 184, 106, 0.08), transparent 55%);
   background-attachment: fixed;
 }
 
-/* Warm gold selection instead of browser blue. */
+/* Ethereal serif for page titles; body stays DM Sans. */
+h1 {
+  font-family: var(--font-cormorant), Georgia, "Times New Roman", serif;
+  letter-spacing: 0;
+}
+
+/* Wisteria selection instead of browser blue. */
 ::selection {
-  background: rgba(244, 199, 123, 0.25);
+  background: rgba(185, 162, 242, 0.28);
   color: #fff;
 }
 
 /* One consistent, accessible keyboard-focus ring across the app. */
 :where(a, button, input, textarea, select, [tabindex]):focus-visible {
-  outline: 2px solid rgba(244, 199, 123, 0.55);
+  outline: 2px solid rgba(185, 162, 242, 0.6);
   outline-offset: 2px;
 }
 
 @layer utilities {
-  /* A soft celestial panel — subtle gold-tinged glass. */
+  /* Display + wordmark type helpers. */
+  .font-display { font-family: var(--font-cormorant), Georgia, serif; }
+  .font-marcellus { font-family: var(--font-marcellus), Georgia, serif; }
+
+  /* Primary brand button — a soft dawn gradient. */
+  .btn-brand {
+    background: linear-gradient(120deg, var(--accent-strong), var(--accent) 55%, var(--rose));
+    color: #1a1330;
+    box-shadow: 0 14px 34px -18px rgba(185, 162, 242, 0.6);
+    transition: transform 0.18s ease, filter 0.2s ease;
+  }
+  .btn-brand:hover { transform: translateY(-2px); filter: brightness(1.04); }
+
+  /* A soft celestial panel — twilight glass with a wisteria whisper. */
   .card-glow {
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
-      rgba(23, 23, 23, 0.4);
+      linear-gradient(180deg, rgba(185, 162, 242, 0.05), rgba(185, 162, 242, 0)),
+      rgba(30, 24, 56, 0.42);
     box-shadow:
-      0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
-      0 20px 60px -30px rgba(0, 0, 0, 0.8);
+      0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
+      0 24px 60px -32px rgba(10, 6, 24, 0.85);
   }
 
   /* Slow twinkle for accent flourishes. */
