@@ -6,16 +6,22 @@ import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { authedFetch } from "@/lib/api";
 
-const NAV_ITEMS: { href: string; label: string }[] = [
+type NavItem = { href: string; label: string; match?: string[] };
+
+// Six content destinations. Forecast rolls up Transits + Timing + Monthly;
+// People holds individuals + households.
+const NAV_ITEMS: NavItem[] = [
   { href: "/app", label: "Today" },
   { href: "/ask", label: "Chat" },
   { href: "/chart", label: "Chart" },
-  { href: "/transits", label: "Transits" },
-  { href: "/timing", label: "Timing" },
+  { href: "/transits", label: "Forecast", match: ["/transits", "/timing", "/monthly"] },
+  { href: "/people", label: "People", match: ["/people", "/household"] },
   { href: "/map", label: "Places" },
-  { href: "/monthly", label: "Monthly" },
+];
+
+// Account cluster — set apart from the content destinations.
+const ACCOUNT_ITEMS: NavItem[] = [
   { href: "/memory", label: "Memory" },
-  { href: "/people", label: "People" },
   { href: "/profile", label: "Profile" },
 ];
 
@@ -80,20 +86,28 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
     );
   }
 
-  const linkClass = (href: string, block = false) => {
-    const active = pathname === href;
-    return [
+  const isActive = (item: NavItem) =>
+    item.match ? item.match.some((m) => pathname.startsWith(m)) : pathname === item.href;
+
+  const linkClass = (active: boolean, block = false) =>
+    [
       "rounded-xl px-3 py-2 text-sm transition",
       block ? "block" : "",
       active
-        ? "bg-neutral-50 text-neutral-950"
-        : "text-neutral-200 hover:bg-white/5 hover:text-neutral-50",
+        ? "bg-accent/15 text-accent"
+        : "text-neutral-300 hover:bg-white/5 hover:text-neutral-50",
     ].join(" ");
-  };
+
+  const badge = (href: string) =>
+    href === "/app" && unread > 0 ? (
+      <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-neutral-950">
+        {unread}
+      </span>
+    ) : null;
 
   return (
     <div className="min-h-screen text-neutral-50">
-      <header className="sticky top-0 z-20 border-b border-white/5 bg-[#08080b]/80 backdrop-blur-md">
+      <header className="sticky top-0 z-20 border-b border-white/5 bg-[#141024]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link href="/app" className="inline-flex items-center gap-2" aria-label="NEFELI home">
             <span className="text-accent animate-twinkle" aria-hidden>✦</span>
@@ -101,15 +115,17 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden flex-wrap items-center justify-end gap-1.5 md:flex">
+          <nav className="hidden flex-wrap items-center justify-end gap-1 md:flex">
             {NAV_ITEMS.map((item) => (
-              <Link key={item.href} href={item.href} className={linkClass(item.href)}>
+              <Link key={item.href} href={item.href} className={linkClass(isActive(item))}>
                 {item.label}
-                {item.href === "/app" && unread > 0 && (
-                  <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-neutral-950">
-                    {unread}
-                  </span>
-                )}
+                {badge(item.href)}
+              </Link>
+            ))}
+            <span className="mx-1.5 h-5 w-px bg-white/10" aria-hidden />
+            {ACCOUNT_ITEMS.map((item) => (
+              <Link key={item.href} href={item.href} className={linkClass(isActive(item))}>
+                {item.label}
               </Link>
             ))}
             {COMMUNITY_URL && (
@@ -169,13 +185,15 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
           <nav className="border-t border-white/5 px-6 py-3 md:hidden">
             <div className="mx-auto flex max-w-5xl flex-col gap-1">
               {NAV_ITEMS.map((item) => (
-                <Link key={item.href} href={item.href} className={linkClass(item.href, true)}>
+                <Link key={item.href} href={item.href} className={linkClass(isActive(item), true)}>
                   {item.label}
-                  {item.href === "/app" && unread > 0 && (
-                    <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-neutral-950">
-                      {unread}
-                    </span>
-                  )}
+                  {badge(item.href)}
+                </Link>
+              ))}
+              <span className="my-1 h-px bg-white/10" aria-hidden />
+              {ACCOUNT_ITEMS.map((item) => (
+                <Link key={item.href} href={item.href} className={linkClass(isActive(item), true)}>
+                  {item.label}
                 </Link>
               ))}
               {COMMUNITY_URL && (
