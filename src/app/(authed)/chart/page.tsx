@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import { BirthChartSVG } from "@/components/astrology/BirthChartSVG";
 import { AspectGrid } from "@/components/astrology/AspectGrid";
 import { bigThree, elementBalance } from "@/lib/astrology/chart-utils";
@@ -27,6 +28,7 @@ export default function ChartPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Could not load your chart.");
         setChart(data.chart);
+        track("chart_viewed");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not load your chart.");
       } finally {

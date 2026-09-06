@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import LocationAutocomplete from "@/components/LocationAutocomplete";
 import { CopyButton } from "@/components/CopyButton";
 import { SkeletonLines } from "@/components/Skeleton";
@@ -77,6 +78,7 @@ export default function PeoplePage() {
         }),
       });
       if (res.ok) {
+        track("person_added", { relationship: relationship.trim() || null, timeUnknown });
         setName(""); setRelationship(""); setBirthDate(""); setBirthTime("");
         setTimeUnknown(false); setPlace(""); setLat(null); setLng(null); setTz(null);
         setShowAdd(false);

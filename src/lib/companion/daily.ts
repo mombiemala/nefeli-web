@@ -18,6 +18,23 @@ export function dayKeyFor(tz: string): string {
   return y && m && d ? `${y}-${m}-${d}` : new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Split a generated reading into its body and its trailing "ACTION: ..." line.
+ * Tolerant of the model omitting the marker (action → null, body → whole text).
+ */
+export function splitAction(raw: string): { body: string; action: string | null } {
+  const text = (raw ?? "").trim();
+  const m = text.match(/(^|\n)[ \t]*action[ \t]*:[ \t]*/i);
+  if (!m || m.index === undefined) return { body: text, action: null };
+  const body = text.slice(0, m.index).trim();
+  const action = text
+    .slice(m.index + m[0].length)
+    .trim()
+    .replace(/^["""']|["""']$/g, "")
+    .trim();
+  return { body: body || text, action: action || null };
+}
+
 export interface DailyGuidanceResult {
   row: Record<string, unknown>;
   created: boolean;
@@ -47,12 +64,19 @@ export async function ensureDailyGuidance(
     .slice(0, 3);
 
   let guidance: string;
+  let action: string | null = null;
   try {
-    guidance = await complete(
+    const raw = await complete(
       ctx.system,
-      `Write ${profile.name}'s guidance for today (${date}). Two short paragraphs, second person, warm, no headers.
-The felt energy today is "${ENERGY_LABEL[level]}". Weave in the moon and the strongest current transits, and connect them to what's alive in their life right now. Non-fatalistic — describe the weather, not fate. End on something grounding, not a task list.`,
+      `Write ${profile.name}'s guidance for today (${date}).
+
+First: two short paragraphs, second person, warm, no headers. The felt energy today is "${ENERGY_LABEL[level]}". Weave in the moon and the strongest current transits, and connect them to what's alive in their life right now. Non-fatalistic — describe the weather, not fate.
+
+Then, on its own final line, write exactly "ACTION: " followed by ONE short, gentle, optional invitation for today — a single concrete thing they might do, try, or notice. An invitation they can freely decline, never a command or a to-do list. One sentence, warm and specific.`,
     );
+    const parsed = splitAction(raw);
+    guidance = parsed.body;
+    action = parsed.action;
   } catch (e) {
     // Claude unavailable (e.g. no API credits). Don't break the page or cache a
     // degraded reading — return a warm, chart-based placeholder that isn't
@@ -80,6 +104,7 @@ The felt energy today is "${ENERGY_LABEL[level]}". Weave in the moon and the str
     moon_phase: ctx.moon.phaseName,
     key_transits: keyTransits,
     guidance,
+    action,
     prompt,
     energy_level: level.toLowerCase(),
   };

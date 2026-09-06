@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { authedFetch } from "@/lib/api";
+import { track } from "@/lib/analytics";
 
 type Msg = { id: string; role: "user" | "assistant"; content: string; remembered?: boolean };
 
@@ -39,6 +40,7 @@ export default function AskPage() {
     const assistantId = crypto.randomUUID();
     setMessages((m) => [...m, userMsg, { id: assistantId, role: "assistant", content: "" }]);
     setStreaming(true);
+    track("chat_sent", { hasConversation: Boolean(conversationId) });
 
     const controller = new AbortController();
     abortRef.current = controller;

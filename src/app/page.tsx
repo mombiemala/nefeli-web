@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
+import { track } from "@/lib/analytics";
 import { Wordmark } from "@/components/Wordmark";
 
 const SURFACES: { title: string; body: string; icon: React.ReactNode }[] = [
@@ -100,6 +101,7 @@ export default function Home() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) window.location.href = "/app";
+      else track("landing_view");
     });
   }, []);
 
@@ -117,7 +119,7 @@ export default function Home() {
           <Wordmark href="/" />
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm text-neutral-300 transition-colors hover:text-neutral-50">Log in</Link>
-            <Link href="/login?mode=signup" className="btn-brand rounded-full px-4 py-2 text-sm font-semibold">Begin</Link>
+            <Link href="/login?mode=signup" onClick={() => track("cta_begin", { loc: "nav" })} className="btn-brand rounded-full px-4 py-2 text-sm font-semibold">Begin</Link>
           </div>
         </div>
       </nav>
@@ -133,7 +135,7 @@ export default function Home() {
           happening for you — and remembers what you share.
         </p>
         <div className="mt-9 flex flex-wrap justify-center gap-3">
-          <Link href="/login?mode=signup" className="btn-brand rounded-full px-7 py-3.5 text-sm font-semibold">Begin your chart</Link>
+          <Link href="/login?mode=signup" onClick={() => track("cta_begin", { loc: "hero" })} className="btn-brand rounded-full px-7 py-3.5 text-sm font-semibold">Begin your chart</Link>
           <Link href="/login" className="rounded-full border border-white/12 px-7 py-3.5 text-sm text-neutral-100 transition-colors hover:border-accent/50">Log in</Link>
         </div>
         <p className="mt-5 text-sm text-neutral-500">Free to start · birth time optional · gentle, never doom-y</p>
@@ -194,7 +196,7 @@ export default function Home() {
         <h2 className="font-display mt-4 text-4xl leading-tight text-neutral-50 sm:text-5xl">Meet the sky that knows you.</h2>
         <p className="mx-auto mt-5 max-w-md text-neutral-300">Free to start. No pressure, no doom — just a companion that pays attention.</p>
         <div className="mt-9">
-          <Link href="/login?mode=signup" className="btn-brand inline-block rounded-full px-8 py-4 text-sm font-semibold">Begin your chart</Link>
+          <Link href="/login?mode=signup" onClick={() => track("cta_begin", { loc: "closing" })} className="btn-brand inline-block rounded-full px-8 py-4 text-sm font-semibold">Begin your chart</Link>
         </div>
       </section>
 

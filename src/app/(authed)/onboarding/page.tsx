@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { authedFetch } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import LocationAutocomplete from "@/components/LocationAutocomplete";
 
 const CATEGORIES: Array<[string, string]> = [
@@ -111,6 +112,7 @@ export default function OnboardingPage() {
         setSaving(false);
         return;
       }
+      track("onboarding_completed", { timeUnknown, contexts: lifeContexts.length });
       setWelcome(data.welcome || "");
     } catch (e) {
       setError("Something went wrong. Please try again.");
