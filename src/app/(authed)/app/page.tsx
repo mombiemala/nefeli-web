@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import type { Transit } from "@/lib/astrology/types";
 import { CopyButton } from "@/components/CopyButton";
+import { ShareButton } from "@/components/ShareCard";
 
 type Guidance = {
   date: string;
   moon_sign: string;
   moon_phase: string;
   guidance: string;
+  action: string | null;
   prompt: string;
   energy_level: "high" | "medium" | "low" | "rest";
 };
@@ -50,6 +53,7 @@ export default function TodayPage() {
         }
         if (!res.ok) throw new Error(data.error || "Could not load today.");
         setGuidance(data.guidance);
+        track("daily_viewed", { energy: data.guidance?.energy_level, cached: Boolean(data.cached) });
 
         // The single strongest transit active today (the sky's loudest note).
         try {
@@ -183,8 +187,23 @@ export default function TodayPage() {
       <div className="space-y-4 text-[15px] leading-7 text-neutral-200">
         {guidance.guidance.split(/\n\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
       </div>
-      <div className="flex justify-end">
+
+      {guidance.action && (
+        <div className="rounded-2xl border-l-2 border-accent/60 bg-accent/[0.06] px-5 py-4">
+          <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-accent">If you like</p>
+          <p className="mt-2 text-[15px] leading-7 text-neutral-100">{guidance.action}</p>
+        </div>
+      )}
+
+      <div className="flex items-center justify-end gap-4">
         <CopyButton text={guidance.guidance} label="Copy today’s reading" />
+        <ShareButton
+          surface="today"
+          eyebrow={`${guidance.moon_phase} in ${guidance.moon_sign}`}
+          title="Today"
+          body={guidance.guidance}
+          highlight={guidance.action}
+        />
       </div>
 
       <div className="card-glow rounded-2xl border border-white/5 p-5">

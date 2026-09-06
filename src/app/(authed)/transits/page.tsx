@@ -4,6 +4,7 @@ import { ForecastTabs } from "@/components/companion/ForecastTabs";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { authedFetch } from "@/lib/api";
+import { track } from "@/lib/analytics";
 import type { Transit } from "@/lib/astrology/types";
 import { Skeleton, SkeletonLines } from "@/components/Skeleton";
 
@@ -25,6 +26,7 @@ export default function TransitsPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Could not load transits.");
         setTransits(data.transits ?? []);
+        track("forecast_viewed", { count: (data.transits ?? []).length });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not load transits.");
       } finally {
