@@ -13,9 +13,16 @@ type Person = {
   timeUnknown: boolean; sunSign: string | null; moonSign: string | null; risingSign: string | null;
 };
 type SynAspect = { a: string; b: string; type: string; glyph: string; orb: number };
+type Connection = {
+  personId: string; name: string; relationship: string | null;
+  quality: "warm" | "tender" | "quiet"; headline: string; window: string;
+  daysSince: number | null; overdue: boolean; surface: boolean; recency: string;
+  justLogged?: boolean;
+};
 
 export default function PeoplePage() {
   const [people, setPeople] = useState<Person[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +52,14 @@ export default function PeoplePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not load your people.");
       setPeople(data.people ?? []);
+
+      // Relationship "reach out" signals — the week's warm/tender windows plus
+      // how long since you last connected. Non-fatal if it fails.
+      try {
+        const cRes = await authedFetch("/api/companion/connections", { method: "GET" });
+        const cData = await cRes.json();
+        if (cRes.ok) setConnections(cData.connections ?? []);
+      } catch { /* non-fatal */ }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load your people.");
     } finally {
@@ -52,6 +67,23 @@ export default function PeoplePage() {
     }
   }
   useEffect(() => { load(); }, []);
+
+  async function logConnected(personId: string) {
+    setConnections((cs) =>
+      cs.map((c) =>
+        c.personId === personId
+          ? { ...c, daysSince: 0, overdue: false, recency: "Connected today", justLogged: true }
+          : c,
+      ),
+    );
+    track("connection_logged");
+    try {
+      await authedFetch("/api/companion/connections", {
+        method: "POST",
+        body: JSON.stringify({ personId }),
+      });
+    } catch { /* optimistic — best-effort */ }
+  }
 
   async function handleLocationSelect(item: { label: string; lat: number; lng: number }) {
     setPlace(item.label); setLat(item.lat); setLng(item.lng);
@@ -137,6 +169,45 @@ export default function PeoplePage() {
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
+
+      {connections.filter((c) => c.surface).length > 0 && (
+        <div className="space-y-3">
+          <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Reach out</p>
+          {connections.filter((c) => c.surface).slice(0, 4).map((c) => (
+            <div
+              key={c.personId}
+              className={`card-glow rounded-2xl border border-white/5 p-4 ${
+                c.quality === "warm" ? "border-l-2 border-l-accent/70"
+                : c.quality === "tender" ? "border-l-2 border-l-[color:var(--gold)]/70"
+                : ""
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-neutral-50">
+                    {c.name}{c.relationship ? <span className="font-normal text-neutral-400"> · {c.relationship}</span> : null}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-neutral-200">
+                    {c.headline} <span className="text-neutral-400">{c.window}</span>.
+                  </p>
+                  <p className="mt-0.5 text-xs text-neutral-500">{c.recency}</p>
+                </div>
+                {c.justLogged ? (
+                  <span className="shrink-0 text-xs text-accent">Noted ✓</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => logConnected(c.personId)}
+                    className="shrink-0 rounded-full border border-white/12 px-3 py-1.5 text-xs text-neutral-100 transition-colors hover:border-accent/50"
+                  >
+                    We connected
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showAdd && (
         <div className="card-glow space-y-4 rounded-2xl border border-white/5 p-5">

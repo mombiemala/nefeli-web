@@ -6,8 +6,7 @@ import { complete } from "@/lib/astrology/prompt";
 import { emailEnabled, sendEmail } from "@/lib/notify/email";
 import { discordEnabled, postToDiscord } from "@/lib/notify/discord";
 import { computeSkyWeather } from "@/lib/astrology/sky-weather";
-import { transitingPositions } from "@/lib/astrology/transiting-positions";
-import { synastryAspects, relationshipPlanets } from "@/lib/astrology/synastry";
+import { computeConnections, isoWeekKey, recencyLabel } from "@/lib/companion/connections";
 import type { AssembledContext } from "@/lib/astrology/assemble-context";
 import type { BirthProfileRow } from "@/lib/companion/context";
 import type { NatalChart } from "@/lib/astrology/types";
@@ -26,8 +25,6 @@ export const maxDuration = 300; // seconds (raised limit needs a paid Vercel pla
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://nefeli.kamalacreated.com";
 const NUDGE_MIN_INTENSITY = 4;
-const REL_NUDGE_MAX_ORB = 1.5;          // only genuinely tight relational hits
-const REL_TRANSIT_SET = ["Sun", "Moon", "Mercury", "Venus", "Mars"];
 const CONCURRENCY = 4;
 
 interface UserOutcome { guidance: boolean; nudge: boolean; relNudge: boolean; email: boolean; failed: boolean }
@@ -85,40 +82,54 @@ async function maybeTransitNudge(
   return deliver(uid, "transit_nudge", title, body, `transit_nudge:${date}`, { transit: top });
 }
 
-/** The tightest transit today between the user and one of their people. */
+/**
+ * The person most worth reaching out to this week — the warmest (or most
+ * overdue) connection — with recency-aware, gently-nudging copy. Deduped once
+ * per person per week so we suggest a reach-out without nagging.
+ */
 async function maybeRelationshipNudge(
-  uid: string, ctx: AssembledContext, profile: BirthProfileRow, date: string,
-  sky: { name: string; absoluteDegree: number }[],
+  uid: string, ctx: AssembledContext, profile: BirthProfileRow,
 ): Promise<{ sent: boolean; emailed: boolean }> {
   const { data: people } = await supabaseAdmin
-    .from("people").select("name,relationship,chart_data").eq("user_id", uid);
+    .from("people").select("id,name,relationship,chart_data,last_contact_at").eq("user_id", uid);
   if (!people || people.length === 0) return { sent: false, emailed: false };
 
-  let best: { name: string; rel: string | null; transiting: string; natal: string; type: string; orb: number } | null = null;
-  for (const person of people) {
-    const chart = person.chart_data as NatalChart | null;
-    if (!chart?.planets) continue;
-    for (const a of synastryAspects(sky, relationshipPlanets(chart.planets), REL_NUDGE_MAX_ORB)) {
-      if (!best || a.orb < best.orb) {
-        best = { name: person.name, rel: person.relationship, transiting: a.a, natal: a.b, type: a.type, orb: a.orb };
-      }
-    }
-  }
-  if (!best) return { sent: false, emailed: false };
+  const input = people.map((p) => ({
+    id: p.id as string,
+    name: p.name as string,
+    relationship: (p.relationship as string | null) ?? null,
+    chart: (p.chart_data as NatalChart | null) ?? null,
+    lastContactAt: (p.last_contact_at as string | null) ?? null,
+  }));
 
-  const relText = best.rel ? ` (${best.rel})` : "";
-  const body = await complete(
-    ctx.system,
-    `Today, transiting ${best.transiting} is ${best.type} ${best.name}'s${relText} natal ${best.natal}. In 1-2 warm sentences (second person, no greeting, no sign-off), tell ${profile.name} what's alive between them and ${best.name} today and one caring way to meet it. Applies to any bond; non-fatalistic.`,
-    220,
-  );
-  const title = `You & ${best.name}: ${best.transiting} ${best.type} their ${best.natal}`;
-  return deliver(uid, "relationship_nudge", title, body, `relationship_nudge:${date}`, { relation: best });
+  const now = new Date();
+  const pick = computeConnections(input, now).find((c) => c.surface && (c.quality === "warm" || c.overdue));
+  if (!pick) return { sent: false, emailed: false };
+
+  const relText = pick.relationship ? ` (${pick.relationship})` : "";
+  const recencyClause = pick.overdue
+    ? ` It's been a while since they last connected (${recencyLabel(pick.daysSince).toLowerCase()}).`
+    : "";
+
+  let body: string;
+  try {
+    body = await complete(
+      ctx.system,
+      `${pick.name}${relText}: ${pick.headline.toLowerCase()} ${pick.window}.${recencyClause} In 1-2 warm sentences (second person, no greeting, no sign-off), gently suggest ${profile.name} reach out to ${pick.name}, and one caring way to do it. Non-fatalistic; applies to any bond.`,
+      200,
+    );
+  } catch {
+    body = `${pick.headline} ${pick.window} — a gentle, good moment to reach out to ${pick.name}.`;
+  }
+
+  const title = pick.overdue
+    ? `A good moment to reach out to ${pick.name}`
+    : `You & ${pick.name}: warm timing ${pick.window}`;
+  const dedupe = `reach_out:${pick.personId}:${isoWeekKey(now)}`;
+  return deliver(uid, "relationship_nudge", title, body, dedupe, { connection: pick });
 }
 
-async function processUser(
-  uid: string, sky: { name: string; absoluteDegree: number }[],
-): Promise<UserOutcome> {
+async function processUser(uid: string): Promise<UserOutcome> {
   const out: UserOutcome = { guidance: false, nudge: false, relNudge: false, email: false, failed: false };
   try {
     const loaded = await loadCompanionContext(supabaseAdmin, uid);
@@ -132,7 +143,7 @@ async function processUser(
     const t = await maybeTransitNudge(uid, ctx, profile, date);
     out.nudge = t.sent; out.email = t.emailed;
 
-    const r = await maybeRelationshipNudge(uid, ctx, profile, date, sky);
+    const r = await maybeRelationshipNudge(uid, ctx, profile);
     out.relNudge = r.sent; out.email = out.email || r.emailed;
   } catch (e) {
     out.failed = true;
@@ -180,14 +191,12 @@ async function run(): Promise<NextResponse> {
   if (error) throw new Error(error.message);
 
   const userIds = [...new Set((profiles ?? []).map((p) => p.user_id))];
-  // The sky is the same for everyone at cron time — compute it once.
-  const sky = transitingPositions(new Date()).filter((p) => REL_TRANSIT_SET.includes(p.name));
   const totals = { guidance: 0, nudges: 0, relNudges: 0, emails: 0, failures: 0 };
 
   let cursor = 0;
   async function worker() {
     while (cursor < userIds.length) {
-      const r = await processUser(userIds[cursor++], sky);
+      const r = await processUser(userIds[cursor++]);
       if (r.guidance) totals.guidance++;
       if (r.nudge) totals.nudges++;
       if (r.relNudge) totals.relNudges++;
