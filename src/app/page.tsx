@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { Wordmark } from "@/components/Wordmark";
@@ -93,23 +93,15 @@ function Starfield() {
 }
 
 export default function Home() {
-  const [checking, setChecking] = useState(true);
-
+  // The landing renders immediately for everyone — logged-out visitors (and
+  // crawlers) see the hero on first paint. We only bounce an already-signed-in
+  // user to the app, in the background, using the locally-cached session so the
+  // redirect is near-instant with no spinner gate.
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getUser();
-      if (data.user) { window.location.href = "/app"; return; }
-      setChecking(false);
-    })();
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.href = "/app";
+    });
   }, []);
-
-  if (checking) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/10 border-t-accent" />
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen overflow-hidden text-neutral-50">
