@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm">
         <div className="card-glow rounded-2xl border border-white/5 p-8">
           <div className="text-center">
-            <h2 className="text-2xl font-bold tracking-tight text-neutral-50">Set a new password</h2>
+            <h2 className="text-3xl font-medium tracking-tight text-neutral-50">Set a new password</h2>
           </div>
 
           {done ? (

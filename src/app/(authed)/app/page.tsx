@@ -153,9 +153,9 @@ export default function TodayPage() {
   return (
     <div className="animate-fade-up mx-auto max-w-2xl space-y-6">
       {nudge && (
-        <div className="rounded-2xl border border-amber-900/50 bg-amber-950/20 p-4">
+        <div className="rounded-2xl border border-accent/25 bg-accent/[0.08] p-4">
           <div className="flex items-start justify-between gap-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-amber-300/80">{nudge.title}</p>
+            <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-accent">{nudge.title}</p>
             <button
               type="button"
               onClick={dismissNudge}
@@ -170,7 +170,7 @@ export default function TodayPage() {
       )}
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Today</h1>
+        <h1 className="text-3xl font-medium tracking-tight text-neutral-50">Today</h1>
         <span className={`rounded-full border px-3 py-1 text-xs font-medium ${energy.className}`}>
           {energy.label}
         </span>
@@ -188,13 +188,13 @@ export default function TodayPage() {
       </div>
 
       <div className="card-glow rounded-2xl border border-white/5 p-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Sit with this</p>
+        <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Sit with this</p>
         <p className="mt-2 text-[15px] leading-7 text-neutral-100">{guidance.prompt}</p>
       </div>
 
       {!nudge && horizon && (
         <div className="card-glow rounded-2xl border border-white/5 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Strongest today</p>
+          <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Strongest today</p>
           <p className="mt-2 text-sm leading-6 text-neutral-300">
             {horizon.glyph} {horizon.transitingPlanet} {horizon.aspect} {horizon.natalPlanet} is the
             loudest note in your sky right now. Nothing to brace for — just where the weather is
@@ -206,7 +206,7 @@ export default function TodayPage() {
       {relations.length > 0 && (
         <div className="card-glow rounded-2xl border border-white/5 p-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Between you &amp; your people</p>
+            <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Between you &amp; your people</p>
             <a href="/people" className="text-xs text-neutral-500 underline-offset-4 hover:text-neutral-300 hover:underline">Open</a>
           </div>
           <ul className="mt-2 space-y-2">

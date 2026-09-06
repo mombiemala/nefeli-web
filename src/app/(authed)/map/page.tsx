@@ -98,7 +98,7 @@ export default function MapPage() {
   if (timeUnknown) {
     return (
       <div className="mx-auto max-w-3xl space-y-4">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Your places</h1>
+        <h1 className="text-3xl font-medium tracking-tight text-neutral-50">Your places</h1>
         <div className="card-glow rounded-2xl border border-white/5 p-6">
           <p className="text-sm leading-6 text-neutral-300">
             Astrocartography lines depend on your exact birth <em>time</em> — the angles rotate through
@@ -117,7 +117,7 @@ export default function MapPage() {
   return (
     <div className="animate-fade-up mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Your places</h1>
+        <h1 className="text-3xl font-medium tracking-tight text-neutral-50">Your places</h1>
         <p className="mt-1 text-sm text-neutral-400">
           Where each planet shaped the sky at your birth. Tap the map or search a city to see what a place activates for you.
         </p>
@@ -146,7 +146,7 @@ export default function MapPage() {
       <div className="grid grid-cols-2 gap-2 text-xs text-neutral-400 sm:grid-cols-4">
         {ANGLES.map(([k, meaning, dashed]) => (
           <div key={k} className="flex items-start gap-2">
-            <svg width="20" height="8" className="mt-1 shrink-0"><line x1="0" y1="4" x2="20" y2="4" stroke="#f4c77b" strokeWidth="1.5" strokeDasharray={dashed ? "3 2.5" : undefined} /></svg>
+            <svg width="20" height="8" className="mt-1 shrink-0"><line x1="0" y1="4" x2="20" y2="4" stroke="#b9a2f2" strokeWidth="1.5" strokeDasharray={dashed ? "3 2.5" : undefined} /></svg>
             <span><span className="text-neutral-200">{k}</span> — {meaning}</span>
           </div>
         ))}
@@ -167,7 +167,7 @@ export default function MapPage() {
 
         {selected && (
           <div className="mt-5">
-            <p className="text-xs uppercase tracking-[0.2em] text-accent/80">{selected.label}</p>
+            <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-accent/80">{selected.label}</p>
             {readingLoading ? (
               <div className="mt-3"><SkeletonLines lines={3} /></div>
             ) : (

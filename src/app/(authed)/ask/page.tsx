@@ -95,7 +95,7 @@ export default function AskPage() {
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-2xl flex-col">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Talk with NEFELI</h1>
+        <h1 className="text-3xl font-medium tracking-tight text-neutral-50">Talk with NEFELI</h1>
         <p className="mt-1 text-sm text-neutral-400">
           Anything that’s alive for you — I read it through your chart and remember what you share.
         </p>

@@ -125,7 +125,7 @@ export default function PeoplePage() {
     <div className="animate-fade-up mx-auto max-w-2xl space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-50">People</h1>
+          <h1 className="text-3xl font-medium tracking-tight text-neutral-50">People</h1>
           <p className="mt-1 text-sm text-neutral-400">The connections you want to understand. I read your charts together.</p>
         </div>
         <button type="button" onClick={() => setShowAdd((v) => !v)}

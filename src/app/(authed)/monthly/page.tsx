@@ -64,7 +64,7 @@ export default function MonthlyPage() {
     <div className="animate-fade-up mx-auto max-w-2xl space-y-6">
       <ForecastTabs />
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-50">{MONTHS[guide.month - 1]} {guide.year}</h1>
+        <h1 className="text-3xl font-medium tracking-tight text-neutral-50">{MONTHS[guide.month - 1]} {guide.year}</h1>
         <p className="mt-1 text-sm text-neutral-400">Your month, read through your chart and your life.</p>
       </div>
 
@@ -79,14 +79,14 @@ export default function MonthlyPage() {
 
       {moon && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-neutral-300">
-          <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Lunations</p>
+          <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Lunations</p>
           <p className="mt-2">🌑 New Moon {fmt(moon.nextNewMoon)} · 🌕 Full Moon {fmt(moon.nextFullMoon)}</p>
         </div>
       )}
 
       {guide.major_transits.length > 0 && (
         <section>
-          <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">Major transits this month</h2>
+          <h2 className="mb-3 font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Major transits this month</h2>
           <div className="space-y-3">
             {guide.major_transits.map((t, i) => (
               <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
