@@ -86,7 +86,7 @@ export default function ChartPage() {
   return (
     <div className="animate-fade-up mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Your chart</h1>
+        <h1 className="text-3xl font-medium tracking-tight text-neutral-50">Your chart</h1>
         <p className="mt-1 text-sm text-neutral-400">Tap any placement for a reading of how it lives in your life.</p>
       </div>
 
@@ -138,7 +138,7 @@ export default function ChartPage() {
       )}
 
       <div>
-        <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">Aspects</h2>
+        <h2 className="mb-3 font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Aspects</h2>
         <AspectGrid aspects={chart.aspects} />
       </div>
 

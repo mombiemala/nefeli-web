@@ -118,14 +118,14 @@ export default function MemoryPage() {
   return (
     <div className="animate-fade-up mx-auto max-w-2xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-50">What I remember</h1>
+        <h1 className="text-3xl font-medium tracking-tight text-neutral-50">What I remember</h1>
         <p className="mt-1 text-sm text-neutral-400">Everything you’ve shared. I read the sky through all of it — and you can tend it here.</p>
       </div>
 
       {/* Patterns */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xs uppercase tracking-[0.2em] text-neutral-500">Patterns I’m noticing</h2>
+          <h2 className="font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Patterns I’m noticing</h2>
           <button type="button" onClick={noticePattern} disabled={patterning}
             className="text-xs font-medium text-neutral-300 underline-offset-4 hover:text-neutral-50 hover:underline disabled:opacity-50">
             {patterning ? "Noticing…" : "Notice a pattern"}
@@ -153,7 +153,7 @@ export default function MemoryPage() {
       {/* Nudges from the daily cron */}
       {nudges.length > 0 && (
         <section>
-          <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">Nudges from the sky</h2>
+          <h2 className="mb-3 font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Nudges from the sky</h2>
           <div className="space-y-2">
             {nudges.map((n) => (
               <div key={n.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
@@ -173,7 +173,7 @@ export default function MemoryPage() {
 
       {/* Declarations */}
       <section>
-        <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">You’re claiming</h2>
+        <h2 className="mb-3 font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">You’re claiming</h2>
         <div className="space-y-2">
           {declarations.map((d) => (
             <div key={d.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
@@ -192,7 +192,7 @@ export default function MemoryPage() {
 
       {/* Life context */}
       <section>
-        <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">What’s alive in your life</h2>
+        <h2 className="mb-3 font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">What’s alive in your life</h2>
         <div className="space-y-2">
           {contexts.map((c) => (
             <div key={c.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
@@ -221,7 +221,7 @@ export default function MemoryPage() {
       {/* Insights */}
       {remembered.length > 0 && (
         <section>
-          <h2 className="mb-3 text-xs uppercase tracking-[0.2em] text-neutral-500">Things you asked me to remember</h2>
+          <h2 className="mb-3 font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Things you asked me to remember</h2>
           <div className="space-y-2">
             {remembered.map((i) => (
               <div key={i.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]">

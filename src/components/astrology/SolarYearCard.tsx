@@ -46,7 +46,7 @@ export function SolarYearCard() {
     <div className="card-glow rounded-2xl border border-white/5 p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-accent/80">Your solar year</p>
+          <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-accent/80">Your solar year</p>
           {sr && <p className="mt-1 text-sm text-neutral-400">The year that began {returnDate}</p>}
         </div>
         {!sr && !loading && (

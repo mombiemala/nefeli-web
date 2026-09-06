@@ -119,7 +119,7 @@ export default function LoginClient() {
                   />
                 </svg>
               </div>
-              <h2 className="mt-4 text-2xl font-bold tracking-tight text-neutral-50">
+              <h2 className="mt-4 text-3xl font-medium tracking-tight text-neutral-50">
                 Check your email
               </h2>
               <p className="mt-2 text-sm text-neutral-400">
@@ -165,7 +165,7 @@ export default function LoginClient() {
           {/* Auth Card */}
           <div className="card-glow rounded-2xl border border-white/5 p-8">
             <div className="text-center">
-              <h2 className="text-2xl font-bold tracking-tight text-neutral-50">
+              <h2 className="text-3xl font-medium tracking-tight text-neutral-50">
                 Log in
               </h2>
             </div>
@@ -275,7 +275,7 @@ export default function LoginClient() {
         {/* Auth Card */}
         <div className="card-glow rounded-2xl border border-white/5 p-8">
           <div className="text-center">
-            <h2 className="text-2xl font-bold tracking-tight text-neutral-50">
+            <h2 className="text-3xl font-medium tracking-tight text-neutral-50">
               Create account
             </h2>
           </div>

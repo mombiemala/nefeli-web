@@ -63,7 +63,7 @@ export function NumbersCard() {
 
   return (
     <div className="card-glow rounded-2xl border border-white/5 p-5">
-      <p className="text-xs uppercase tracking-[0.2em] text-accent/80">Your numbers</p>
+      <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-accent/80">Your numbers</p>
 
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Tile label="Life Path" n={nums.lifePath} />

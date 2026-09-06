@@ -68,7 +68,7 @@ export default function TransitsPage() {
     <div className="animate-fade-up mx-auto max-w-2xl space-y-5">
       <ForecastTabs />
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Transits</h1>
+        <h1 className="text-3xl font-medium tracking-tight text-neutral-50">Transits</h1>
         <p className="mt-1 text-sm text-neutral-400">What the sky is activating in your chart right now.</p>
       </div>
 

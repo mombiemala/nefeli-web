@@ -125,7 +125,7 @@ export default function TimingPage() {
     <div className="animate-fade-up mx-auto max-w-2xl space-y-6">
       <ForecastTabs />
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Timing</h1>
+        <h1 className="text-3xl font-medium tracking-tight text-neutral-50">Timing</h1>
         <p className="mt-1 text-sm text-neutral-400">Your energy over the next 30 days, and the best windows for what matters.</p>
       </div>
 

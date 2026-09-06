@@ -51,7 +51,7 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-neutral-50">Profile</h1>
+      <h1 className="text-3xl font-medium tracking-tight text-neutral-50">Profile</h1>
 
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
         <label className="block text-sm font-medium text-neutral-200">Name</label>
@@ -66,7 +66,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-sm text-neutral-300">
-        <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">Birth details</p>
+        <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Birth details</p>
         <dl className="mt-3 space-y-2">
           <div className="flex justify-between"><dt className="text-neutral-500">Date</dt><dd>{profile.birth_date}</dd></div>
           <div className="flex justify-between"><dt className="text-neutral-500">Time</dt><dd>{profile.time_unknown || !profile.birth_time ? "Unknown" : profile.birth_time}</dd></div>

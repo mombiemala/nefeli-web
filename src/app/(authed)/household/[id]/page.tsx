@@ -81,14 +81,14 @@ export default function HouseholdPage() {
     <div className="animate-fade-up mx-auto max-w-2xl space-y-6">
       <div>
         <Link href="/people" className="text-xs text-neutral-500 hover:text-neutral-300">← People</Link>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-neutral-50">{name}</h1>
+        <h1 className="mt-1 text-3xl font-medium tracking-tight text-neutral-50">{name}</h1>
         <p className="mt-1 text-sm text-neutral-400">{members.length} {members.length === 1 ? "member" : "members"} · the weather at home today</p>
       </div>
 
       {/* Household today */}
       <div className="card-glow rounded-2xl border border-white/5 p-5">
         <div className="flex items-center justify-between">
-          <p className="text-xs uppercase tracking-[0.2em] text-accent/80">Household today</p>
+          <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-accent/80">Household today</p>
           {!reading && !readingLoading && (
             <button type="button" onClick={readToday}
               className="rounded-lg border border-white/10 px-4 py-1.5 text-sm text-neutral-100 transition-colors hover:bg-white/5">Read</button>
@@ -107,7 +107,7 @@ export default function HouseholdPage() {
 
       {/* Members */}
       <div className="space-y-2">
-        <h2 className="text-xs uppercase tracking-[0.2em] text-neutral-500">Everyone today</h2>
+        <h2 className="font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Everyone today</h2>
         {members.map((m) => (
           <div key={m.id} className="card-glow rounded-2xl border border-white/5 p-4">
             <p className="text-sm font-semibold text-neutral-50">
@@ -132,7 +132,7 @@ export default function HouseholdPage() {
       {/* Compatibility grid */}
       {matrix.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-xs uppercase tracking-[0.2em] text-neutral-500">Between each pair</h2>
+          <h2 className="font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Between each pair</h2>
           <div className="card-glow space-y-3 rounded-2xl border border-white/5 p-5">
             {matrix.map((p, i) => (
               <div key={i}>
