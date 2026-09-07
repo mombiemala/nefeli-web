@@ -15,13 +15,18 @@ const SURFACES = [
   "chat_sent", "person_added", "reading_shared", "connection_logged",
 ] as const;
 
-async function adminEmail(uid: string): Promise<string | null> {
+// Built-in owner allowlist — opaque Supabase user ids (no PII), safe in source.
+// Additional admins can be granted via the ADMIN_EMAILS env var, no code change.
+const OWNER_IDS = ["a98d4a79-a4ac-436a-8229-108e5bef906a"];
+
+async function isAdmin(uid: string): Promise<boolean> {
+  if (OWNER_IDS.includes(uid)) return true;
   const allow = (process.env.ADMIN_EMAILS ?? "")
     .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (allow.length === 0) return null; // locked until configured
+  if (allow.length === 0) return false;
   const { data } = await supabaseAdmin.auth.admin.getUserById(uid);
   const email = data?.user?.email?.toLowerCase();
-  return email && allow.includes(email) ? email : null;
+  return Boolean(email && allow.includes(email));
 }
 
 type EventRow = { name: string; user_id: string | null; created_at: string };
@@ -60,9 +65,9 @@ export async function GET(req: Request) {
   try {
     const uid = await getAuthedUserId(req);
     if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (!(await adminEmail(uid))) {
+    if (!(await isAdmin(uid))) {
       return NextResponse.json(
-        { error: "forbidden", hint: "Set ADMIN_EMAILS (comma-separated) in your environment to your email, then redeploy." },
+        { error: "forbidden", hint: "This account isn't an admin. Grant access by adding an email to ADMIN_EMAILS (comma-separated) in your environment, then redeploy." },
         { status: 403 },
       );
     }
