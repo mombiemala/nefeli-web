@@ -8,6 +8,7 @@ import { AspectGrid } from "@/components/astrology/AspectGrid";
 import { bigThree, elementBalance } from "@/lib/astrology/chart-utils";
 import type { NatalChart, PlanetPosition } from "@/lib/astrology/types";
 import { CopyButton } from "@/components/CopyButton";
+import { ShareButton } from "@/components/ShareCard";
 import { Skeleton, SkeletonLines } from "@/components/Skeleton";
 import { NumbersCard } from "@/components/astrology/NumbersCard";
 
@@ -130,8 +131,14 @@ export default function ChartPage() {
                 {(reading ?? "").split(/\n\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
               </div>
               {reading && (
-                <div className="mt-3 flex justify-end">
+                <div className="mt-3 flex items-center justify-end gap-4">
                   <CopyButton text={`${selected.name} in ${selected.sign}\n\n${reading}`} label="Copy reading" />
+                  <ShareButton
+                    surface="placement"
+                    eyebrow="Your chart"
+                    title={`${selected.name} in ${selected.sign}`}
+                    body={reading}
+                  />
                 </div>
               )}
             </>

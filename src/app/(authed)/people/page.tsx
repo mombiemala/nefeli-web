@@ -5,6 +5,7 @@ import { authedFetch } from "@/lib/api";
 import { track } from "@/lib/analytics";
 import LocationAutocomplete from "@/components/LocationAutocomplete";
 import { CopyButton } from "@/components/CopyButton";
+import { ShareButton } from "@/components/ShareCard";
 import { SkeletonLines } from "@/components/Skeleton";
 import { HouseholdsSection } from "@/components/companion/HouseholdsSection";
 
@@ -282,8 +283,14 @@ export default function PeoplePage() {
                           <div className="space-y-3 text-[15px] leading-7 text-neutral-200">
                             {reading.split(/\n\n+/).filter(Boolean).map((para, i) => <p key={i}>{para}</p>)}
                           </div>
-                          <div className="mt-3 flex justify-end">
+                          <div className="mt-3 flex items-center justify-end gap-4">
                             <CopyButton text={`${p.name}${p.relationship ? ` (${p.relationship})` : ""}\n\n${reading}`} label="Copy reading" />
+                            <ShareButton
+                              surface="synastry"
+                              eyebrow={p.relationship ? `You & ${p.relationship}` : "Between you"}
+                              title={`You & ${p.name}`}
+                              body={reading}
+                            />
                           </div>
                         </>
                       )}

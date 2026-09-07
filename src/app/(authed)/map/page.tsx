@@ -7,6 +7,7 @@ import { WorldMap } from "@/components/astrology/WorldMap";
 import { PLANET_LINE_COLOR, type AstroMap, type NearbyLine } from "@/lib/astrology/astrocartography";
 import LocationAutocomplete from "@/components/LocationAutocomplete";
 import { CopyButton } from "@/components/CopyButton";
+import { ShareButton } from "@/components/ShareCard";
 import { SkeletonLines } from "@/components/Skeleton";
 
 const ANGLES: [string, string, boolean][] = [
@@ -187,8 +188,9 @@ export default function MapPage() {
                     <div className="mt-3 space-y-3 text-[15px] leading-7 text-neutral-200">
                       {reading.split(/\n\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
                     </div>
-                    <div className="mt-3 flex justify-end">
+                    <div className="mt-3 flex items-center justify-end gap-4">
                       <CopyButton text={`${selected.label}\n\n${reading}`} label="Copy reading" />
+                      <ShareButton surface="place" eyebrow="Your places" title={selected.label} body={reading} />
                     </div>
                   </>
                 )}

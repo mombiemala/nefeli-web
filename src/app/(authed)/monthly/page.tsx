@@ -4,6 +4,7 @@ import { ForecastTabs } from "@/components/companion/ForecastTabs";
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/api";
 import { CopyButton } from "@/components/CopyButton";
+import { ShareButton } from "@/components/ShareCard";
 import { Skeleton, SkeletonLines } from "@/components/Skeleton";
 import { SolarYearCard } from "@/components/astrology/SolarYearCard";
 
@@ -71,8 +72,14 @@ export default function MonthlyPage() {
       <div className="space-y-4 text-[15px] leading-7 text-neutral-200">
         {guide.overview.split(/\n\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
       </div>
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-4">
         <CopyButton text={`${MONTHS[guide.month - 1]} ${guide.year}\n\n${guide.overview}`} label="Copy overview" />
+        <ShareButton
+          surface="monthly"
+          eyebrow="Your month"
+          title={`${MONTHS[guide.month - 1]} ${guide.year}`}
+          body={guide.overview}
+        />
       </div>
 
       <SolarYearCard />
