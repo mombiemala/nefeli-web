@@ -21,6 +21,17 @@ type Connection = {
   justLogged?: boolean;
 };
 
+/** Whole years old from a birth date, or null if unparseable. */
+function ageOf(iso: string): number | null {
+  const b = new Date(iso);
+  if (Number.isNaN(b.getTime())) return null;
+  const now = new Date();
+  let a = now.getUTCFullYear() - b.getUTCFullYear();
+  const m = now.getUTCMonth() - b.getUTCMonth();
+  if (m < 0 || (m === 0 && now.getUTCDate() < b.getUTCDate())) a--;
+  return a >= 0 && a < 130 ? a : null;
+}
+
 export default function PeoplePage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -45,6 +56,10 @@ export default function PeoplePage() {
   const [aspects, setAspects] = useState<SynAspect[]>([]);
   const [reading, setReading] = useState<string | null>(null);
   const [synLoading, setSynLoading] = useState(false);
+
+  // Parenting insight (per child)
+  const [childReadings, setChildReadings] = useState<Record<string, string>>({});
+  const [childLoading, setChildLoading] = useState<Record<string, boolean>>({});
 
   async function load() {
     setError(null);
@@ -136,6 +151,25 @@ export default function PeoplePage() {
       setReading("I couldn't read that connection just now.");
     } finally {
       setSynLoading(false);
+    }
+  }
+
+  async function loadChildReading(personId: string) {
+    if (childLoading[personId]) return;
+    setChildLoading((s) => ({ ...s, [personId]: true }));
+    setChildReadings((s) => ({ ...s, [personId]: s[personId] ?? "" })); // mark opened
+    track("child_read");
+    try {
+      const res = await authedFetch("/api/companion/child", {
+        method: "POST",
+        body: JSON.stringify({ personId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setChildReadings((s) => ({ ...s, [personId]: res.ok ? data.reading : "I couldn't read that just now." }));
+    } catch {
+      setChildReadings((s) => ({ ...s, [personId]: "I couldn't read that just now." }));
+    } finally {
+      setChildLoading((s) => ({ ...s, [personId]: false }));
     }
   }
 
@@ -249,19 +283,50 @@ export default function PeoplePage() {
         <p className="text-sm text-neutral-600">No one yet. Add someone to see how your charts move together.</p>
       ) : (
         <div className="space-y-3">
-          {people.map((p) => (
+          {people.map((p) => {
+            const age = ageOf(p.birthDate);
+            const isChild = age !== null && age < 18;
+            return (
             <div key={p.id} className="card-glow rounded-2xl border border-white/5 p-4 transition-colors hover:border-white/10">
               <div className="flex items-center justify-between gap-3">
                 <button type="button" onClick={() => selectPerson(p.id)} className="flex-1 text-left">
                   <p className="text-sm font-semibold text-neutral-50">
                     {p.name}{p.relationship ? <span className="font-normal text-neutral-400"> · {p.relationship}</span> : null}
+                    {isChild ? <span className="ml-2 align-middle text-xs text-accent/80">🌱 {age}</span> : null}
                   </p>
                   <p className="mt-0.5 text-xs text-neutral-500">
                     {p.sunSign ? `Sun ${p.sunSign}` : ""}{p.moonSign ? ` · Moon ${p.moonSign}` : ""}{p.risingSign && !p.timeUnknown ? ` · Rising ${p.risingSign}` : ""}
                   </p>
                 </button>
-                <button type="button" onClick={() => removePerson(p.id)} className="text-xs text-neutral-600 hover:text-neutral-300">remove</button>
+                <div className="flex shrink-0 items-center gap-3">
+                  {isChild && !(p.id in childReadings) && (
+                    <button type="button" onClick={() => loadChildReading(p.id)}
+                      className="rounded-full border border-white/12 px-3 py-1.5 text-xs text-neutral-100 transition-colors hover:border-accent/50">
+                      Parenting insight
+                    </button>
+                  )}
+                  <button type="button" onClick={() => removePerson(p.id)} className="text-xs text-neutral-600 hover:text-neutral-300">remove</button>
+                </div>
               </div>
+
+              {p.id in childReadings && (
+                <div className="mt-4 border-t border-white/5 pt-4">
+                  <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-accent/80">Parenting insight</p>
+                  {childLoading[p.id] && !childReadings[p.id] ? (
+                    <div className="mt-3"><SkeletonLines lines={4} /></div>
+                  ) : (
+                    <>
+                      <div className="mt-3 space-y-3 text-[15px] leading-7 text-neutral-200">
+                        {childReadings[p.id].split(/\n\n+/).filter(Boolean).map((para, i) => <p key={i}>{para}</p>)}
+                      </div>
+                      <div className="mt-3 flex items-center justify-end gap-4">
+                        <CopyButton text={`${p.name} — parenting insight\n\n${childReadings[p.id]}`} label="Copy" />
+                        <ShareButton surface="child" eyebrow="Parenting insight" title={p.name} body={childReadings[p.id]} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               {selected === p.id && (
                 <div className="mt-4 border-t border-white/5 pt-4">
@@ -299,7 +364,8 @@ export default function PeoplePage() {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
