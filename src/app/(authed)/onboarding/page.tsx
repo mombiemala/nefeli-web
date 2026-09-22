@@ -124,7 +124,7 @@ export default function OnboardingPage() {
   if (welcome !== null) {
     return (
       <div className="mx-auto max-w-2xl">
-        <div className="card-glow animate-fade-up rounded-2xl border border-white/5 p-8">
+        <div className="card-glow animate-fade-up rounded-2xl border border-white/5 p-6 sm:p-8">
           <p className="text-xs uppercase tracking-[0.25em] text-accent/80">
             <span className="animate-twinkle mr-1" aria-hidden>✦</span> Your welcome
           </p>
@@ -162,7 +162,7 @@ export default function OnboardingPage() {
         <p className="mt-2 text-xs text-neutral-500">Step {step} of {TOTAL_STEPS}</p>
       </div>
 
-      <div key={step} className="card-glow animate-fade-up rounded-2xl border border-white/5 p-8">
+      <div key={step} className="card-glow animate-fade-up rounded-2xl border border-white/5 p-6 sm:p-8">
         {step === 1 && (
           <>
             <h2 className="text-xl font-semibold text-neutral-50">What should I call you?</h2>

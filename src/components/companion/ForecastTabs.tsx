@@ -15,21 +15,23 @@ export function ForecastTabs() {
   return (
     <div>
       <p className="font-marcellus text-xs uppercase tracking-[0.3em] text-accent/80">Forecast</p>
-      <div className="mt-3 inline-flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
-        {TABS.map((t) => {
-          const active = pathname.startsWith(t.href);
-          return (
-            <Link
-              key={t.href}
-              href={t.href}
-              className={`rounded-full px-4 py-1.5 text-sm transition ${
-                active ? "bg-accent/15 text-accent" : "text-neutral-400 hover:text-neutral-100"
-              }`}
-            >
-              {t.label}
-            </Link>
-          );
-        })}
+      <div className="mt-3 overflow-x-auto">
+        <div className="inline-flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
+          {TABS.map((t) => {
+            const active = pathname.startsWith(t.href);
+            return (
+              <Link
+                key={t.href}
+                href={t.href}
+                className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm transition ${
+                  active ? "bg-accent/15 text-accent" : "text-neutral-400 hover:text-neutral-100"
+                }`}
+              >
+                {t.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

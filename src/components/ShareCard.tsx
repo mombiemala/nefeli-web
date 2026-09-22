@@ -188,7 +188,7 @@ export function ShareButton(props: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs text-neutral-500 underline-offset-4 hover:text-accent hover:underline"
+        className="-my-1 py-1 text-xs text-neutral-500 underline-offset-4 hover:text-accent hover:underline"
       >
         Share as image
       </button>
@@ -270,15 +270,16 @@ function ShareModal(props: Props & { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
-      <div
-        className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#171226] p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div
+          className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#171226] p-5"
+          onClick={(e) => e.stopPropagation()}
+        >
         <div className="flex items-center justify-between">
           <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-accent">Share</p>
           <button type="button" onClick={onClose} aria-label="Close" className="text-neutral-500 hover:text-neutral-300">✕</button>
@@ -308,5 +309,6 @@ function ShareModal(props: Props & { onClose: () => void }) {
         </div>
       </div>
     </div>
+  </div>
   );
 }

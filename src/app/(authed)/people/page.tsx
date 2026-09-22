@@ -305,7 +305,7 @@ export default function PeoplePage() {
                       Parenting insight
                     </button>
                   )}
-                  <button type="button" onClick={() => removePerson(p.id)} className="text-xs text-neutral-600 hover:text-neutral-300">remove</button>
+                  <button type="button" onClick={() => removePerson(p.id)} className="-my-1 py-1 text-xs text-neutral-600 hover:text-neutral-300">remove</button>
                 </div>
               </div>
 

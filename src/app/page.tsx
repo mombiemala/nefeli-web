@@ -127,7 +127,7 @@ export default function Home() {
       {/* Hero */}
       <header className="relative mx-auto max-w-3xl px-6 pb-14 pt-20 text-center">
         <p className="font-marcellus text-xs uppercase tracking-[0.32em] text-accent">Your personal astrology companion</p>
-        <h1 className="mx-auto mt-6 max-w-[15ch] text-balance text-5xl leading-[1.04] text-neutral-50 sm:text-7xl">
+        <h1 className="mx-auto mt-6 max-w-[15ch] text-balance text-4xl leading-[1.04] text-neutral-50 sm:text-6xl md:text-7xl">
           The sky, read through <em className="italic text-accent">your</em> life.
         </h1>
         <p className="mx-auto mt-7 max-w-xl text-pretty text-lg leading-8 text-neutral-300">

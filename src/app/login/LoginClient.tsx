@@ -35,17 +35,26 @@ export default function LoginClient() {
       if (error) {
         setStatus({ type: "error", message: error.message });
         setLoading(false);
-      } else if (data.session) {
-        // Email confirmation is disabled, so signUp returns a live session and
-        // the account is immediately usable — send them straight into
-        // onboarding instead of telling them to check for an email that was
-        // never sent.
-        window.location.href = "/onboarding";
-      } else {
-        // Confirmation is required (a verification email really was sent).
-        setEmailSent(true);
-        setLoading(false);
+        return;
       }
+
+      // Email confirmation is disabled for this project, so a new account is
+      // usable immediately. signUp sometimes returns a live session directly;
+      // when it doesn't, sign in with the same credentials — that only fails if
+      // confirmation is genuinely required. Either way, never send the user to a
+      // "check your email" screen for an email that was never sent.
+      if (data.session) {
+        window.location.href = "/onboarding";
+        return;
+      }
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (!signInError) {
+        window.location.href = "/onboarding";
+        return;
+      }
+      // Confirmation really is required (a verification email was actually sent).
+      setEmailSent(true);
+      setLoading(false);
     } else {
       // Login mode
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -109,7 +118,7 @@ export default function LoginClient() {
       <div className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
         <div className="w-full max-w-sm">
           <div className="mb-6 flex justify-center"><Wordmark href="/" /></div>
-          <div className="card-glow rounded-2xl border border-white/5 p-8">
+          <div className="card-glow rounded-2xl border border-white/5 p-6 sm:p-8">
             <div className="text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-950/20">
                 <svg
@@ -170,7 +179,7 @@ export default function LoginClient() {
         <div className="w-full max-w-sm">
           <div className="mb-6 flex justify-center"><Wordmark href="/" /></div>
           {/* Auth Card */}
-          <div className="card-glow rounded-2xl border border-white/5 p-8">
+          <div className="card-glow rounded-2xl border border-white/5 p-6 sm:p-8">
             <div className="text-center">
               <h2 className="text-3xl font-medium tracking-tight text-neutral-50">
                 Log in
@@ -257,12 +266,6 @@ export default function LoginClient() {
               </p>
             </div>
 
-            <div className="mt-6">
-              <p className="text-xs text-neutral-500">
-                You'll verify your email when creating an account.
-              </p>
-            </div>
-
             <div className="mt-6 border-t border-white/5 pt-6">
               <p className="text-xs text-neutral-500">
                 We'll never sell your data. You can delete your account anytime.
@@ -280,7 +283,7 @@ export default function LoginClient() {
       <div className="w-full max-w-sm">
           <div className="mb-6 flex justify-center"><Wordmark href="/" /></div>
         {/* Auth Card */}
-        <div className="card-glow rounded-2xl border border-white/5 p-8">
+        <div className="card-glow rounded-2xl border border-white/5 p-6 sm:p-8">
           <div className="text-center">
             <h2 className="text-3xl font-medium tracking-tight text-neutral-50">
               Create account
@@ -348,12 +351,6 @@ export default function LoginClient() {
               </button>
             </div>
           </form>
-
-          <div className="mt-6">
-            <p className="text-xs text-neutral-500">
-              You'll verify your email when creating an account.
-            </p>
-          </div>
 
           <div className="mt-6 text-center">
             <p className="text-xs text-neutral-400">

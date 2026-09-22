@@ -17,7 +17,7 @@ export function CopyButton({ text, label = "Copy" }: { text: string; label?: str
           /* clipboard unavailable */
         }
       }}
-      className="text-xs text-neutral-500 underline-offset-4 hover:text-neutral-300 hover:underline"
+      className="-my-1 py-1 text-xs text-neutral-500 underline-offset-4 hover:text-neutral-300 hover:underline"
     >
       {copied ? "Copied ✓" : label}
     </button>
