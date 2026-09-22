@@ -35,6 +35,10 @@ html {
 html,
 body {
   background-color: var(--background);
+  /* Safety net: no single overflowing child may scroll the whole page
+     sideways. `clip` (not `hidden`) avoids creating a scroll container, so it
+     never breaks the sticky header's positioning. */
+  overflow-x: clip;
 }
 
 body {

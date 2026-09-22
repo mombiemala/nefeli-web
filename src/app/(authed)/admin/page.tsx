@@ -140,14 +140,16 @@ export default function AdminPage() {
       <section>
         <h2 className="mb-1 font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Retention</h2>
         <p className="mb-3 text-xs text-neutral-500">Share of onboarded users who came back within N days.</p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {([["Within 1 day", stats.retention.d1], ["Within 7 days", stats.retention.d7], ["Within 30 days", stats.retention.d30]] as const).map(([label, r]) => {
             const h = health(r.rate);
             return (
-              <div key={label} className="card-glow rounded-2xl border border-white/5 p-4">
+              <div key={label} className="card-glow flex items-baseline justify-between gap-3 rounded-2xl border border-white/5 p-4 sm:block">
                 <p className="text-xs text-neutral-500">{label}</p>
-                <p className={`mt-2 font-display text-3xl leading-none ${h.color}`} style={{ fontVariantNumeric: "tabular-nums" }}>{pct(r.rate)}</p>
-                <p className="mt-1.5 text-xs text-neutral-500">{r.rate === null ? h.label : `${r.returned} of ${r.eligible} · ${h.label}`}</p>
+                <div className="text-right sm:text-left">
+                  <p className={`font-display text-3xl leading-none sm:mt-2 ${h.color}`} style={{ fontVariantNumeric: "tabular-nums" }}>{pct(r.rate)}</p>
+                  <p className="mt-1.5 text-xs text-neutral-500">{r.rate === null ? h.label : `${r.returned} of ${r.eligible} · ${h.label}`}</p>
+                </div>
               </div>
             );
           })}
@@ -160,12 +162,14 @@ export default function AdminPage() {
         <p className="mb-3 text-xs text-neutral-500">Engagement by surface, last 7 days.</p>
         <div className="card-glow space-y-2.5 rounded-2xl border border-white/5 p-5">
           {stats.surfaces.map((s) => (
-            <div key={s.name} className="flex items-center gap-3">
-              <span className="w-40 shrink-0 text-sm text-neutral-300">{SURFACE_LABEL[s.name] ?? s.name}</span>
-              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/[0.05]">
-                <div className="h-full rounded-full bg-accent/70" style={{ width: `${(s.count / surfaceMax) * 100}%` }} />
+            <div key={s.name} className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+              <span className="text-sm text-neutral-300 sm:w-40 sm:shrink-0">{SURFACE_LABEL[s.name] ?? s.name}</span>
+              <div className="flex items-center gap-3 sm:flex-1">
+                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/[0.05]">
+                  <div className="h-full rounded-full bg-accent/70" style={{ width: `${(s.count / surfaceMax) * 100}%` }} />
+                </div>
+                <span className="w-8 shrink-0 text-right text-sm text-neutral-200" style={{ fontVariantNumeric: "tabular-nums" }}>{s.count}</span>
               </div>
-              <span className="w-8 shrink-0 text-right text-sm text-neutral-200" style={{ fontVariantNumeric: "tabular-nums" }}>{s.count}</span>
             </div>
           ))}
         </div>
