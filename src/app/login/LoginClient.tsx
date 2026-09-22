@@ -24,7 +24,7 @@ export default function LoginClient() {
     setStatus(null);
 
     if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -35,7 +35,14 @@ export default function LoginClient() {
       if (error) {
         setStatus({ type: "error", message: error.message });
         setLoading(false);
+      } else if (data.session) {
+        // Email confirmation is disabled, so signUp returns a live session and
+        // the account is immediately usable — send them straight into
+        // onboarding instead of telling them to check for an email that was
+        // never sent.
+        window.location.href = "/onboarding";
       } else {
+        // Confirmation is required (a verification email really was sent).
         setEmailSent(true);
         setLoading(false);
       }
