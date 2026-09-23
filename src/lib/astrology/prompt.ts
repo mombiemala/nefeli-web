@@ -47,6 +47,21 @@ function activeProvider(): Provider {
   return "anthropic";
 }
 
+/** Non-secret LLM configuration, for the health check. Never returns keys. */
+export function llmStatus() {
+  const provider = activeProvider();
+  return {
+    provider,
+    override: process.env.LLM_PROVIDER?.toLowerCase() || null,
+    model: provider === "gemini" ? GEMINI_MODEL : provider === "groq" ? GROQ_MODEL : CLAUDE_MODEL,
+    keys: {
+      gemini: Boolean(process.env.GEMINI_API_KEY),
+      groq: Boolean(process.env.GROQ_API_KEY),
+      anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+    },
+  };
+}
+
 async function geminiComplete(system: string, messages: ChatMessage[], maxTokens: number): Promise<string> {
   const key = process.env.GEMINI_API_KEY!;
   const contents = messages.map((m) => ({
