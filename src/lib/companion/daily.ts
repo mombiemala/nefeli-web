@@ -6,6 +6,7 @@ import type { AssembledContext } from "@/lib/astrology/assemble-context";
 import type { BirthProfileRow } from "./context";
 import { deriveEnergyLevel, pickPrompt } from "@/lib/astrology/guidance-logic";
 import { complete } from "@/lib/astrology/prompt";
+import { cleanModelText, looksInvalid } from "@/lib/astrology/sanitize";
 
 /** The calendar day (YYYY-MM-DD) in the user's own timezone. */
 export function dayKeyFor(tz: string): string {
@@ -88,7 +89,7 @@ export async function ensureDailyGuidance(
   let guidance: string;
   const action: string | null = null; // the Today reading ends on a noticing, not an appended task
   try {
-    guidance = (await complete(
+    const raw = await complete(
       ctx.system,
       `Write ${profile.name}'s reading for today (${date}).
 
@@ -96,7 +97,11 @@ Open with something true about ${profile.name}'s own life — draw on what they'
 
 Three to five short sentences, second person, no headers. End on a noticing or a question, never a summary or reassurance. Do not write a sentence that would be true for a stranger.`,
       500,
-    )).trim();
+    );
+    // Keep only the final prose — never a leaked checklist/scaffolding — and
+    // reject a non-reading so we fall back and retry rather than caching garbage.
+    guidance = cleanModelText(raw);
+    if (looksInvalid(guidance)) throw new Error("model returned scaffolding/invalid reading");
   } catch (e) {
     // LLM unreachable (rate-limited/overloaded). Don't cache a degraded reading —
     // return a warm, chart-based placeholder marked `pending` so the client polls
