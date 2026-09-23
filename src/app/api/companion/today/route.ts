@@ -11,10 +11,10 @@ export async function POST(req: Request) {
     const loaded = await loadCompanionContext(supabaseAdmin, uid);
     if (!loaded) return NextResponse.json({ error: "onboarding_required" }, { status: 400 });
 
-    const { row, created } = await ensureDailyGuidance(
+    const { row, created, pending } = await ensureDailyGuidance(
       supabaseAdmin, uid, loaded.ctx, loaded.profile,
     );
-    return NextResponse.json({ ok: true, cached: !created, guidance: row });
+    return NextResponse.json({ ok: true, cached: !created, pending: Boolean(pending), guidance: row });
   } catch (e) {
     console.error("companion today error:", e);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });

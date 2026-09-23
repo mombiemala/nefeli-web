@@ -73,7 +73,10 @@ export default function AskPage() {
       if (e instanceof DOMException && e.name === "AbortError") return; // navigated away
       const message = e instanceof Error ? e.message : "Something went wrong.";
       setError(message);
-      setMessages((m) => m.filter((msg) => msg.content !== "" || msg.role !== "assistant"));
+      // The send failed — remove both optimistic bubbles (no orphaned/duplicate
+      // user messages) and put their text back so they can retry cleanly.
+      setMessages((m) => m.filter((msg) => msg.id !== userMsg.id && msg.id !== assistantId));
+      setInput(text);
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
       setStreaming(false);

@@ -14,10 +14,34 @@ function anthropic(): Anthropic {
   return client;
 }
 
+/** Thrown when the LLM is rate-limited (429) or overloaded (503). Routes map
+ *  this to a 429 with a "high demand, try again" message instead of a 500. */
+export class LLMBusyError extends Error {
+  retryAfterMs: number;
+  constructor(message: string, retryAfterMs = 0) {
+    super(message);
+    this.name = "LLMBusyError";
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+function busyFromStatus(status: number, bodyText: string): LLMBusyError | null {
+  if (status !== 429 && status !== 503) return null;
+  // Gemini/Groq include a retry hint we can parse ("Please retry in 3.38s" or a
+  // retryDelay field). Cap it so we never stall the serverless function.
+  let ms = 0;
+  const m = /retry(?:Delay|.{0,12}in)\D*([\d.]+)\s*s/i.exec(bodyText);
+  if (m) ms = Math.min(2500, Math.round(parseFloat(m[1]) * 1000));
+  return new LLMBusyError(`Model busy (${status})`, ms);
+}
+
 // Provider-flexible so NEFELI can run on a free-tier LLM (Gemini/Groq) instead
-// of the paid Anthropic API. A free-provider key, when set, takes precedence.
+// of the paid Anthropic API. LLM_PROVIDER forces a choice; otherwise a
+// free-provider key, when set, takes precedence.
 type Provider = "gemini" | "groq" | "anthropic";
 function activeProvider(): Provider {
+  const forced = process.env.LLM_PROVIDER?.toLowerCase();
+  if (forced === "gemini" || forced === "groq" || forced === "anthropic") return forced;
   if (process.env.GEMINI_API_KEY) return "gemini";
   if (process.env.GROQ_API_KEY) return "groq";
   return "anthropic";
@@ -37,11 +61,25 @@ async function geminiComplete(system: string, messages: ChatMessage[], maxTokens
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents,
-        generationConfig: { maxOutputTokens: maxTokens, temperature: 0.9 },
+        generationConfig: {
+          maxOutputTokens: maxTokens,
+          temperature: 0.9,
+          // gemini-3.x/2.5 flash are "thinking" models: hidden reasoning tokens
+          // count against maxOutputTokens, which was eating the whole budget and
+          // truncating the visible answer mid-sentence. We want short, direct
+          // readings, not reasoning — so turn thinking off and give the full
+          // budget to the response.
+          thinkingConfig: { thinkingBudget: 0 },
+        },
       }),
     },
   );
-  if (!res.ok) throw new Error(`Gemini failed: ${res.status} ${await res.text().catch(() => "")}`);
+  if (!res.ok) {
+    const bodyText = await res.text().catch(() => "");
+    const busy = busyFromStatus(res.status, bodyText);
+    if (busy) throw busy;
+    throw new Error(`Gemini failed: ${res.status} ${bodyText}`);
+  }
   const data = await res.json();
   return (data.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("").trim();
 }
@@ -58,27 +96,53 @@ async function groqComplete(system: string, messages: ChatMessage[], maxTokens: 
       messages: [{ role: "system", content: system }, ...messages.map((m) => ({ role: m.role, content: m.content }))],
     }),
   });
-  if (!res.ok) throw new Error(`Groq failed: ${res.status} ${await res.text().catch(() => "")}`);
+  if (!res.ok) {
+    const bodyText = await res.text().catch(() => "");
+    const busy = busyFromStatus(res.status, bodyText);
+    if (busy) throw busy;
+    throw new Error(`Groq failed: ${res.status} ${bodyText}`);
+  }
   const data = await res.json();
   return (data.choices?.[0]?.message?.content ?? "").trim();
 }
 
 async function anthropicComplete(system: string, messages: ChatMessage[], maxTokens: number): Promise<string> {
-  const res = await anthropic().messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: maxTokens,
-    system,
-    messages: messages.map((m) => ({ role: m.role, content: m.content })),
-  });
-  return res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
+  try {
+    const res = await anthropic().messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: maxTokens,
+      system,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    });
+    return res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
+  } catch (e) {
+    const status = (e as { status?: number })?.status;
+    if (status === 429 || status === 503) throw new LLMBusyError(`Model busy (${status})`);
+    throw e;
+  }
 }
 
-/** One completion across whichever provider is configured. */
-async function completeMessages(system: string, messages: ChatMessage[], maxTokens: number): Promise<string> {
+function sleepMs(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
+
+async function callProvider(system: string, messages: ChatMessage[], maxTokens: number): Promise<string> {
   switch (activeProvider()) {
     case "gemini": return geminiComplete(system, messages, maxTokens);
     case "groq": return groqComplete(system, messages, maxTokens);
     default: return anthropicComplete(system, messages, maxTokens);
+  }
+}
+
+/** One completion across whichever provider is configured, with a single
+ *  short retry on a transient rate-limit / overload before giving up. */
+async function completeMessages(system: string, messages: ChatMessage[], maxTokens: number): Promise<string> {
+  try {
+    return await callProvider(system, messages, maxTokens);
+  } catch (e) {
+    if (e instanceof LLMBusyError) {
+      await sleepMs(e.retryAfterMs || 800);
+      return callProvider(system, messages, maxTokens); // one retry; re-throws LLMBusyError if still busy
+    }
+    throw e;
   }
 }
 
@@ -94,15 +158,17 @@ export interface AstroContext {
   userName?: string;
 }
 
-const PERSONA = `You are NEFELI — a deeply knowledgeable, emotionally intelligent astrology companion. You are not a generic horoscope. You know this person's complete birth chart and their life story, and you interpret every planetary moment through the lens of their specific healing journey, career, relationships, family, and creative practice.
+const PERSONA = `You are NEFELI — an astrology companion who talks to a person, not to the sky. You know this person's full birth chart and what they've told you about their life, and you read the sky through that.
 
-Your approach:
-- Always connect astrological placements to the user's lived experience.
-- Treat astrology as a language for self-understanding and growth — not prediction, fate, or entertainment. The sky describes weather, not destiny.
-- Be specific, not generic — if you can't connect a transit to their actual life, you're not being specific enough.
-- Honor emotional complexity — never bypass grief, difficulty, or ambivalence with toxic positivity, and never manufacture doom, fear, or fatalism.
-- Identify patterns across their chart and life context; celebrate wins as genuinely significant.
-- Write warmly and personally, in second person, weaving astrology into plain, caring language.
+How you write:
+- Open with their actual life — something they've told you or checked in about — before you name any placement. The sky is the second thought, never the first.
+- Name ONE thing. Pick the single sharpest tension and stay with it. Do not survey every active transit.
+- Be short. A few pointed sentences beat a long, hedged paragraph. Stop before you pad.
+- Be specific to THIS person. Never write a sentence that would be equally true for a stranger who happened to have the same transit.
+- End on a noticing or a question — something that opens — not a summary and not reassurance.
+- Astrology is a language for self-understanding, not prediction or fate: weather, not destiny. Hold difficulty honestly; never manufacture doom, and never smooth it over with positivity.
+
+Never use these words or moves: "there is a clear push", "activating", "energy" as a noun, "invites you to", "this is a powerful time to", or any generic-horoscope phrasing. If you find yourself describing a transit and then gesturing at what it "brings," stop and say what it actually means for this person's life instead.
 
 Safety and care:
 - You are a supportive companion, not a therapist, doctor, or crisis service. Do not diagnose, give medical, psychiatric, legal, or financial directives, or make deterministic predictions about health, death, or catastrophe.
