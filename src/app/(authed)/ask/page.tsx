@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { authedFetch } from "@/lib/api";
 import { track } from "@/lib/analytics";
+import { cleanModelText } from "@/lib/astrology/sanitize";
 
 type Msg = { id: string; role: "user" | "assistant"; content: string; remembered?: boolean };
 
@@ -142,7 +143,7 @@ export default function AskPage() {
                 isStreamingMsg ? "streaming-caret" : "",
               ].join(" ")}
             >
-              {msg.content}
+              {msg.role === "assistant" ? cleanModelText(msg.content) : msg.content}
             </div>
             {msg.role === "assistant" && msg.content && !streaming && (
               <div className="mt-1">

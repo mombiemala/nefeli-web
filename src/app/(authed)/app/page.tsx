@@ -38,6 +38,7 @@ export default function TodayPage() {
   const [nudge, setNudge] = useState<Nudge | null>(null);
   const [relations, setRelations] = useState<RelTransit[]>([]);
   const [pending, setPending] = useState(false);
+  const [pendingFailed, setPendingFailed] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Check-in
@@ -100,7 +101,8 @@ export default function TodayPage() {
   }, []);
 
   // When today's reading came back as the fallback (LLM was busy), poll for the
-  // real one instead of making the user reload.
+  // real one instead of making the user reload. Give up after ~36s and show a
+  // clear retry rather than polling forever.
   function startPolling() {
     if (pollRef.current) return;
     let tries = 0;
@@ -112,16 +114,38 @@ export default function TodayPage() {
         if (res.ok && data.guidance && !data.pending) {
           setGuidance(data.guidance);
           setPending(false);
+          setPendingFailed(false);
           if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
           return;
         }
       } catch { /* keep trying */ }
-      if (tries >= 12 && pollRef.current) { // give up after ~72s
+      if (tries >= 6 && pollRef.current) { // give up after ~36s
         clearInterval(pollRef.current);
         pollRef.current = null;
         setPending(false);
+        setPendingFailed(true);
       }
     }, 6000);
+  }
+
+  async function retryReading() {
+    setPendingFailed(false);
+    setPending(true);
+    try {
+      const res = await authedFetch("/api/companion/today", { method: "POST", body: "{}" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.guidance) {
+        setGuidance(data.guidance);
+        if (data.pending) { setPending(true); startPolling(); }
+        else { setPending(false); }
+      } else {
+        setPending(false);
+        setPendingFailed(true);
+      }
+    } catch {
+      setPending(false);
+      setPendingFailed(true);
+    }
   }
 
   async function dismissNudge() {
@@ -221,25 +245,42 @@ export default function TodayPage() {
         {guidance.moon_phase} in {guidance.moon_sign}
       </p>
 
-      <div className="space-y-4 text-[15px] leading-7 text-neutral-200">
-        {guidance.guidance.split(/\n\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
-      </div>
+      {!pendingFailed && (
+        <div className="space-y-4 text-[15px] leading-7 text-neutral-200">
+          {guidance.guidance.split(/\n\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
+        </div>
+      )}
 
-      {pending && (
+      {pending && !pendingFailed && (
         <div className="flex items-center gap-2 text-sm text-neutral-500">
           <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-neutral-700 border-t-accent" />
           Still reading the sky for you…
         </div>
       )}
 
-      {!pending && guidance.action && (
+      {pendingFailed && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <p className="text-sm leading-6 text-neutral-300">
+            Your reading didn’t come through just now — the sky-reader was unavailable. Nothing’s wrong on your end.
+          </p>
+          <button
+            type="button"
+            onClick={retryReading}
+            className="mt-3 rounded-lg btn-brand px-5 py-2 text-sm font-semibold"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {!pending && !pendingFailed && guidance.action && (
         <div className="rounded-2xl border-l-2 border-accent/60 bg-accent/[0.06] px-5 py-4">
           <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-accent">If you like</p>
           <p className="mt-2 text-[15px] leading-7 text-neutral-100">{guidance.action}</p>
         </div>
       )}
 
-      {!pending && (
+      {!pending && !pendingFailed && (
         <div className="flex items-center justify-end gap-4">
           <CopyButton text={guidance.guidance} label="Copy today’s reading" />
           <ShareButton

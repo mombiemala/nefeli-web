@@ -7,6 +7,7 @@ import { emailEnabled, sendEmail } from "@/lib/notify/email";
 import { discordEnabled, postToDiscord } from "@/lib/notify/discord";
 import { computeSkyWeather } from "@/lib/astrology/sky-weather";
 import { computeConnections, isoWeekKey, recencyLabel } from "@/lib/companion/connections";
+import { cleanModelText, truncateAtSentence } from "@/lib/astrology/sanitize";
 import type { AssembledContext } from "@/lib/astrology/assemble-context";
 import type { BirthProfileRow } from "@/lib/companion/context";
 import type { NatalChart } from "@/lib/astrology/types";
@@ -75,11 +76,11 @@ async function maybeTransitNudge(
   const top = [...ctx.transits].sort((a, b) => b.intensity - a.intensity)[0];
   if (!top || top.intensity < NUDGE_MIN_INTENSITY) return { sent: false, emailed: false };
 
-  const body = await complete(
+  const body = truncateAtSentence(cleanModelText(await complete(
     ctx.system,
     `In 1-2 warm sentences (second person, no greeting, no sign-off), give ${profile.name} a heads-up that ${top.transitingPlanet} is ${top.aspect} their natal ${top.natalPlanet} right now. Name what it might stir and one gentle way to meet it. Non-fatalistic — weather, not fate.`,
     220,
-  );
+  )), 420);
   const title = `${top.transitingPlanet} ${top.aspect} your ${top.natalPlanet}`;
   return deliver(uid, "transit_nudge", title, body, `transit_nudge:${date}`, { transit: top });
 }
@@ -115,11 +116,12 @@ async function maybeRelationshipNudge(
 
   let body: string;
   try {
-    body = await complete(
+    body = truncateAtSentence(cleanModelText(await complete(
       ctx.system,
       `${pick.name}${relText}: ${pick.headline.toLowerCase()} ${pick.window}.${recencyClause} In 1-2 warm sentences (second person, no greeting, no sign-off), gently suggest ${profile.name} reach out to ${pick.name}, and one caring way to do it. Non-fatalistic; applies to any bond.`,
       200,
-    );
+    )), 420);
+    if (!body) throw new Error("empty nudge");
   } catch {
     body = `${pick.headline} ${pick.window} — a gentle, good moment to reach out to ${pick.name}.`;
   }
