@@ -4,7 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AssembledContext } from "@/lib/astrology/assemble-context";
 import type { BirthProfileRow } from "./context";
-import { deriveEnergyLevel, ENERGY_LABEL, pickPrompt } from "@/lib/astrology/guidance-logic";
+import { deriveEnergyLevel, pickPrompt } from "@/lib/astrology/guidance-logic";
 import { complete } from "@/lib/astrology/prompt";
 
 /** The calendar day (YYYY-MM-DD) in the user's own timezone. */
@@ -38,6 +38,9 @@ export function splitAction(raw: string): { body: string; action: string | null 
 export interface DailyGuidanceResult {
   row: Record<string, unknown>;
   created: boolean;
+  /** True when `row` is the non-persisted fallback (LLM was unreachable); the
+   *  client should poll for the real reading rather than requiring a reload. */
+  pending?: boolean;
 }
 
 /**
@@ -63,37 +66,54 @@ export async function ensureDailyGuidance(
     .sort((a, b) => b.intensity - a.intensity)
     .slice(0, 3);
 
-  let guidance: string;
-  let action: string | null = null;
+  // Today's check-in, if they left one — so the reading answers a person who
+  // said "tired but steady," not a blank. (Stored as a "theme" insight.)
+  let checkIn: string | null = null;
   try {
-    const raw = await complete(
+    const since = new Date(Date.now() - 20 * 3600 * 1000).toISOString();
+    const { data: ci } = await supabase
+      .from("insights").select("content")
+      .eq("user_id", uid).eq("insight_type", "theme")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (ci?.content) checkIn = String(ci.content).slice(0, 240);
+  } catch { /* non-fatal */ }
+
+  // The single sharpest transit — not a survey.
+  const top = keyTransits[0];
+  const sharpest = top
+    ? `transiting ${top.transitingPlanet} ${top.aspect} their natal ${top.natalPlanet}`
+    : `the ${ctx.moon.moonSign} Moon`;
+
+  let guidance: string;
+  const action: string | null = null; // the Today reading ends on a noticing, not an appended task
+  try {
+    guidance = (await complete(
       ctx.system,
-      `Write ${profile.name}'s guidance for today (${date}).
+      `Write ${profile.name}'s reading for today (${date}).
 
-First: two short paragraphs, second person, warm, no headers. The felt energy today is "${ENERGY_LABEL[level]}". Weave in the moon and the strongest current transits, and connect them to what's alive in their life right now. Non-fatalistic — describe the weather, not fate.
+Open with something true about ${profile.name}'s own life — draw on what they've told you${checkIn ? `, and especially what they said in today's check-in: "${checkIn}"` : ""}. Only in the second sentence bring in the sharpest thing in their sky right now: ${sharpest}. Name one tension between their life and that placement. You may set it against at most one opposing pull in the sky if that genuinely sharpens the tension — but no third thing, and no survey of transits.
 
-Then, on its own final line, write exactly "ACTION: " followed by ONE short, gentle, optional invitation for today — a single concrete thing they might do, try, or notice. An invitation they can freely decline, never a command or a to-do list. One sentence, warm and specific.`,
-    );
-    const parsed = splitAction(raw);
-    guidance = parsed.body;
-    action = parsed.action;
+Three to five short sentences, second person, no headers. End on a noticing or a question, never a summary or reassurance. Do not write a sentence that would be true for a stranger.`,
+      500,
+    )).trim();
   } catch (e) {
-    // Claude unavailable (e.g. no API credits). Don't break the page or cache a
-    // degraded reading — return a warm, chart-based placeholder that isn't
-    // persisted, so a real reading generates as soon as Claude is reachable.
-    console.error("daily guidance generation failed (Claude unavailable?):", e);
-    const top = keyTransits[0];
+    // LLM unreachable (rate-limited/overloaded). Don't cache a degraded reading —
+    // return a warm, chart-based placeholder marked `pending` so the client polls
+    // and swaps in the real reading as soon as the model is reachable.
+    console.error("daily guidance generation failed:", e);
+    const t = keyTransits[0];
     const placeholder =
       `Today the Moon moves through ${ctx.moon.moonSign}${ctx.moon.phaseName ? `, ${String(ctx.moon.phaseName).toLowerCase()}` : ""}. ` +
-      (top ? `The sky's strongest note is ${top.transitingPlanet} ${top.aspect} your ${top.natalPlanet}. ` : "") +
-      `Let it be a ${ENERGY_LABEL[level].toLowerCase()} kind of day — notice what it stirs, and keep a gentle pace.\n\n` +
-      `Your full daily reading will appear here shortly.`;
+      (t ? `The sky's strongest note is ${t.transitingPlanet} ${t.aspect} your ${t.natalPlanet}. ` : "") +
+      `Your reading is still coming — it'll appear here in a moment.`;
     return {
       row: {
         user_id: uid, date, moon_sign: ctx.moon.moonSign, moon_phase: ctx.moon.phaseName,
-        key_transits: keyTransits, guidance: placeholder, prompt, energy_level: level.toLowerCase(),
+        key_transits: keyTransits, guidance: placeholder, action: null, prompt, energy_level: level.toLowerCase(),
       },
       created: false,
+      pending: true,
     };
   }
 

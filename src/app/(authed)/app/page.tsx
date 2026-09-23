@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { authedFetch } from "@/lib/api";
 import { track } from "@/lib/analytics";
 import type { Transit } from "@/lib/astrology/types";
@@ -37,10 +37,13 @@ export default function TodayPage() {
   const [horizon, setHorizon] = useState<Transit | null>(null);
   const [nudge, setNudge] = useState<Nudge | null>(null);
   const [relations, setRelations] = useState<RelTransit[]>([]);
+  const [pending, setPending] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Check-in
   const [reflection, setReflection] = useState("");
   const [checkinResponse, setCheckinResponse] = useState<string | null>(null);
+  const [checkinError, setCheckinError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -53,6 +56,8 @@ export default function TodayPage() {
         }
         if (!res.ok) throw new Error(data.error || "Could not load today.");
         setGuidance(data.guidance);
+        setPending(Boolean(data.pending));
+        if (data.pending) startPolling();
         track("daily_viewed", { energy: data.guidance?.energy_level, cached: Boolean(data.cached) });
 
         // The single strongest transit active today (the sky's loudest note).
@@ -91,7 +96,33 @@ export default function TodayPage() {
         setLoading(false);
       }
     })();
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
+
+  // When today's reading came back as the fallback (LLM was busy), poll for the
+  // real one instead of making the user reload.
+  function startPolling() {
+    if (pollRef.current) return;
+    let tries = 0;
+    pollRef.current = setInterval(async () => {
+      tries++;
+      try {
+        const res = await authedFetch("/api/companion/today", { method: "POST", body: "{}" });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.guidance && !data.pending) {
+          setGuidance(data.guidance);
+          setPending(false);
+          if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+          return;
+        }
+      } catch { /* keep trying */ }
+      if (tries >= 12 && pollRef.current) { // give up after ~72s
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+        setPending(false);
+      }
+    }, 6000);
+  }
 
   async function dismissNudge() {
     const n = nudge;
@@ -109,16 +140,22 @@ export default function TodayPage() {
     const text = reflection.trim();
     if (!text || submitting) return;
     setSubmitting(true);
+    setCheckinError(null);
     try {
       const res = await authedFetch("/api/companion/checkin", {
         method: "POST",
         body: JSON.stringify({ reflection: text }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setCheckinResponse(data.response);
         setReflection("");
+      } else {
+        // Keep their text so they can retry; show why it didn't go through.
+        setCheckinError(data.error || "That didn't go through. Try again in a moment.");
       }
+    } catch {
+      setCheckinError("That didn't go through. Check your connection and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -188,23 +225,32 @@ export default function TodayPage() {
         {guidance.guidance.split(/\n\n+/).filter(Boolean).map((p, i) => <p key={i}>{p}</p>)}
       </div>
 
-      {guidance.action && (
+      {pending && (
+        <div className="flex items-center gap-2 text-sm text-neutral-500">
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-neutral-700 border-t-accent" />
+          Still reading the sky for you…
+        </div>
+      )}
+
+      {!pending && guidance.action && (
         <div className="rounded-2xl border-l-2 border-accent/60 bg-accent/[0.06] px-5 py-4">
           <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-accent">If you like</p>
           <p className="mt-2 text-[15px] leading-7 text-neutral-100">{guidance.action}</p>
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-4">
-        <CopyButton text={guidance.guidance} label="Copy today’s reading" />
-        <ShareButton
-          surface="today"
-          eyebrow={`${guidance.moon_phase} in ${guidance.moon_sign}`}
-          title="Today"
-          body={guidance.guidance}
-          highlight={guidance.action}
-        />
-      </div>
+      {!pending && (
+        <div className="flex items-center justify-end gap-4">
+          <CopyButton text={guidance.guidance} label="Copy today’s reading" />
+          <ShareButton
+            surface="today"
+            eyebrow={`${guidance.moon_phase} in ${guidance.moon_sign}`}
+            title="Today"
+            body={guidance.guidance}
+            highlight={guidance.action}
+          />
+        </div>
+      )}
 
       <div className="card-glow rounded-2xl border border-white/5 p-5">
         <p className="font-marcellus text-xs uppercase tracking-[0.2em] text-neutral-500">Sit with this</p>
@@ -264,6 +310,9 @@ export default function TodayPage() {
               placeholder="A line about where you are — tired, hopeful, bracing for something…"
               className="mt-3 block w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-neutral-50 placeholder:text-neutral-600 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/40"
             />
+            {checkinError && (
+              <p className="mt-3 text-sm text-rose-400">{checkinError}</p>
+            )}
             <div className="mt-3 flex justify-end">
               <button
                 type="button"
@@ -271,7 +320,7 @@ export default function TodayPage() {
                 disabled={submitting || !reflection.trim()}
                 className="rounded-lg btn-brand px-5 py-2 text-sm font-semibold disabled:opacity-50"
               >
-                {submitting ? "…" : "Share"}
+                {submitting ? "…" : checkinError ? "Try again" : "Share"}
               </button>
             </div>
           </>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, getAuthedUserId } from "@/lib/supabase/admin";
 import { loadCompanionContext } from "@/lib/companion/context";
-import { streamChat, type ChatMessage } from "@/lib/astrology/prompt";
+import { streamChat, LLMBusyError, type ChatMessage } from "@/lib/astrology/prompt";
 
 // Streaming companion chat. Assembles the full context (chart + transits + moon +
 // memory), streams Claude's reply as plain UTF-8 text, and persists both turns to
@@ -88,6 +88,12 @@ export async function POST(req: Request) {
       },
     });
   } catch (e) {
+    if (e instanceof LLMBusyError) {
+      return NextResponse.json(
+        { error: "NEFELI is in high demand right now. Give it a moment and send again." },
+        { status: 429 },
+      );
+    }
     console.error("companion chat error:", e);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
