@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { llmStatus } from "@/lib/astrology/prompt";
 
 // Public health check — confirms the deployed build is pointed at a real,
 // reachable Supabase project, from the server side (no browser, no login).
@@ -74,6 +75,7 @@ export async function GET() {
     {
       ok,
       supabase: { url, projectRef: projectRef(url), auth, db, serviceRole, schema },
+      llm: llmStatus(),
       env,
       time: new Date().toISOString(),
     },

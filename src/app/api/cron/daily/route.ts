@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { loadCompanionContext } from "@/lib/companion/context";
-import { ensureDailyGuidance, dayKeyFor } from "@/lib/companion/daily";
+import { dayKeyFor } from "@/lib/companion/daily";
 import { complete } from "@/lib/astrology/prompt";
 import { emailEnabled, sendEmail } from "@/lib/notify/email";
 import { discordEnabled, postToDiscord } from "@/lib/notify/discord";
@@ -11,9 +11,11 @@ import type { AssembledContext } from "@/lib/astrology/assemble-context";
 import type { BirthProfileRow } from "@/lib/companion/context";
 import type { NatalChart } from "@/lib/astrology/types";
 
-// Daily cron: pre-warm each onboarded user's guidance and, when notable,
-// write proactive "nudge" notifications — one about a transit to their own
-// chart, and one about a transit between them and a saved person. Triggered by
+// Daily cron: send proactive "nudge" notifications — one about a transit to the
+// user's own chart, and one about the person they're most worth reaching out to.
+// The daily reading itself is generated on demand (when the user opens Today),
+// not pre-warmed here, so cron LLM usage stays flat as the user base grows.
+// Also posts the collective "sky weather" to the community Discord. Triggered by
 // Vercel Cron (see vercel.json).
 //
 // Protected by CRON_SECRET: Vercel sends `Authorization: Bearer $CRON_SECRET`
@@ -27,7 +29,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://nefeli.kamalacreated
 const NUDGE_MIN_INTENSITY = 4;
 const CONCURRENCY = 4;
 
-interface UserOutcome { guidance: boolean; nudge: boolean; relNudge: boolean; email: boolean; failed: boolean }
+interface UserOutcome { nudge: boolean; relNudge: boolean; email: boolean; failed: boolean }
 
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -130,15 +132,15 @@ async function maybeRelationshipNudge(
 }
 
 async function processUser(uid: string): Promise<UserOutcome> {
-  const out: UserOutcome = { guidance: false, nudge: false, relNudge: false, email: false, failed: false };
+  const out: UserOutcome = { nudge: false, relNudge: false, email: false, failed: false };
   try {
     const loaded = await loadCompanionContext(supabaseAdmin, uid);
     if (!loaded) return out;
     const { ctx, profile } = loaded;
 
-    const { created } = await ensureDailyGuidance(supabaseAdmin, uid, ctx, profile);
-    out.guidance = created;
-
+    // Note: the daily reading is NOT pre-generated here — it's created on demand
+    // when the user opens Today, so the cron's LLM usage doesn't scale with the
+    // whole user base. The cron only sends the proactive nudges below.
     const date = dayKeyFor(profile.timezone);
     const t = await maybeTransitNudge(uid, ctx, profile, date);
     out.nudge = t.sent; out.email = t.emailed;
@@ -191,13 +193,12 @@ async function run(): Promise<NextResponse> {
   if (error) throw new Error(error.message);
 
   const userIds = [...new Set((profiles ?? []).map((p) => p.user_id))];
-  const totals = { guidance: 0, nudges: 0, relNudges: 0, emails: 0, failures: 0 };
+  const totals = { nudges: 0, relNudges: 0, emails: 0, failures: 0 };
 
   let cursor = 0;
   async function worker() {
     while (cursor < userIds.length) {
       const r = await processUser(userIds[cursor++]);
-      if (r.guidance) totals.guidance++;
       if (r.nudge) totals.nudges++;
       if (r.relNudge) totals.relNudges++;
       if (r.email) totals.emails++;
